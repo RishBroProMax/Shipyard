@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Anchor,
@@ -15,12 +15,19 @@ import {
   FileCode,
   Users,
   Database,
-  Search,
+  Layers,
+  Cloud,
 } from "lucide-react";
 
 export default function DocsPage() {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [currentOrigin, setCurrentOrigin] = useState("https://shipyard.example");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentOrigin(window.location.origin);
+    }
+  }, []);
 
   const copyCode = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -28,15 +35,17 @@ export default function DocsPage() {
     setTimeout(() => setCopiedSection(null), 2000);
   };
 
+  const installCmd = `curl -fsSL ${currentOrigin}/install.sh | sh`;
+
   const sections = [
     { id: "quickstart", title: "Quickstart (One-Line VPS Install)" },
+    { id: "dual-modes", title: "Vercel vs Self-Hosted Appliance" },
     { id: "architecture", title: "Appliance Architecture & Zero Config" },
     { id: "worker-nodes", title: "Connecting Worker Nodes" },
     { id: "file-editor", title: "In-Browser File Editor & Static Hosting" },
     { id: "git-auto-deploy", title: "Git Push & Webhook Auto-Deploy" },
     { id: "custom-domains", title: "Custom Domains & Reverse Proxy" },
     { id: "security-vault", title: "AES-256 Vault & Security Model" },
-    { id: "api-reference", title: "REST & Agent API Reference" },
   ];
 
   return (
@@ -63,7 +72,7 @@ export default function DocsPage() {
             className="px-3 py-1.5 rounded bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Dashboard</span>
+            <span>Home</span>
           </Link>
         </div>
       </header>
@@ -89,8 +98,8 @@ export default function DocsPage() {
             </nav>
 
             <div className="p-3.5 rounded bg-zinc-950 border border-zinc-800 text-[11px] text-zinc-400 font-mono">
-              <div className="text-zinc-200 font-semibold mb-1">Version: 1.0.0</div>
-              <div>License: MIT / Self-Hosted</div>
+              <div className="text-zinc-200 font-semibold mb-1">Shipyard v1.0.0</div>
+              <div>License: MIT / Production PaaS</div>
             </div>
           </div>
         </aside>
@@ -112,13 +121,17 @@ export default function DocsPage() {
 
             <div className="relative group">
               <pre className="p-4 rounded-lg bg-black border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-                curl -fsSL https://shipyard.example/install.sh | sh
+                {installCmd}
               </pre>
               <button
-                onClick={() => copyCode("install", "curl -fsSL https://shipyard.example/install.sh | sh")}
+                onClick={() => copyCode("install", installCmd)}
                 className="absolute top-3 right-3 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] font-mono text-zinc-300 flex items-center gap-1"
               >
-                {copiedSection === "install" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSection === "install" ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSection === "install" ? "Copied" : "Copy"}</span>
               </button>
             </div>
@@ -128,32 +141,77 @@ export default function DocsPage() {
             </p>
           </section>
 
-          {/* Section 2: Architecture */}
-          <section id="architecture" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
+          {/* Section 2: Dual Modes (Vercel vs Appliance) */}
+          <section id="dual-modes" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
+              <Cloud className="w-4 h-4" />
+              <span>DEPLOYMENT MODES</span>
+            </div>
+            <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
+              One Unified Repo: Vercel vs Self-Hosted Appliance
+            </h2>
+            <p>
+              Shipyard is engineered with an intelligent dual-mode architecture within a single Git repository:
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2">
+                <span className="text-cyan-400 font-bold block text-sm">▲ Vercel Cloud Mode</span>
+                <p className="text-zinc-400 leading-relaxed">
+                  When deployed to Vercel (detected via <code className="text-zinc-200">VERCEL=1</code>), the app runs as the official public showcase:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-zinc-400">
+                  <li>Root <code className="text-zinc-200">/</code> serves the marketing landing page</li>
+                  <li><code className="text-zinc-200">/docs</code> serves full documentation</li>
+                  <li><code className="text-zinc-200">/install.sh</code> dynamically serves the bash installer</li>
+                  <li>No Docker or persistent disk required</li>
+                </ul>
+              </div>
+
+              <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2">
+                <span className="text-emerald-400 font-bold block text-sm">⚓ Self-Hosted Appliance</span>
+                <p className="text-zinc-400 leading-relaxed">
+                  When installed on a VPS via <code className="text-zinc-200">install.sh</code> (detected via <code className="text-zinc-200">SHIPYARD_MODE=appliance</code>):
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-zinc-400">
+                  <li>Root <code className="text-zinc-200">/</code> serves the full PaaS Control Plane</li>
+                  <li>Manages live Docker containers, builds, and sandboxes</li>
+                  <li>Dynamic reverse proxy (Caddy) &amp; automated SSL</li>
+                  <li>Zero mock data: real CPU, RAM, Disk, Net telemetry</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 3: Architecture */}
+          <section id="architecture" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
+            <div className="flex items-center gap-2 text-xs font-mono text-purple-400">
               <Database className="w-4 h-4" />
               <span>ARCHITECTURE</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
-              Control Plane & Zero-Configuration Model
+              Appliance Architecture &amp; Zero Configuration
             </h2>
             <p>
-              Shipyard is built on a distributed **Control Plane (Leader) + Deployment Agent (Worker Nodes)** architecture:
+              Shipyard eliminates all complex multi-step setups by behaving like a unified appliance:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-xs text-zinc-400">
               <li>
-                <strong className="text-zinc-200">Control Plane:</strong> Manages webhooks, project configurations, user accounts, audit activity, secret encryption, and dynamic reverse proxy routing.
+                <strong className="text-zinc-200">Supervisor Engine:</strong> On first startup, the supervisor generates internal credentials, AES-256 vault keys, and initializes PostgreSQL and Redis queues automatically.
               </li>
               <li>
-                <strong className="text-zinc-200">Deployment Agents:</strong> Run on the local machine and remote servers. They execute builds in isolated Docker sandboxes and stream real-time CPU, RAM, Disk, and Network I/O metrics back to the leader.
+                <strong className="text-zinc-200">Control Plane (Leader):</strong> Handles webhooks, project configurations, user accounts, audit activity, secret encryption, and dynamic reverse proxy routing.
               </li>
               <li>
-                <strong className="text-zinc-200">Zero-Trust Sandboxing:</strong> Untrusted repository code builds exclusively on worker nodes—never in the main control plane process.
+                <strong className="text-zinc-200">Deployment Agents (Workers):</strong> Execute builds in isolated Docker sandboxes and stream real-time telemetry back to the leader every 3 seconds.
+              </li>
+              <li>
+                <strong className="text-zinc-200">Zero-Trust Isolation:</strong> Untrusted code never compiles inside the leader process; all builds occur in sandboxed containers.
               </li>
             </ul>
           </section>
 
-          {/* Section 3: Worker Nodes */}
+          {/* Section 4: Worker Nodes */}
           <section id="worker-nodes" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-amber-400">
               <Server className="w-4 h-4" />
@@ -163,29 +221,33 @@ export default function DocsPage() {
               Connecting Remote Worker Nodes
             </h2>
             <p>
-              To join any remote VPS, bare-metal server, or PC as a worker node, execute the agent installation command:
+              To join any remote VPS, bare-metal server, or PC as a worker node, copy the agent installation command from your dashboard:
             </p>
 
             <div className="relative group">
               <pre className="p-4 rounded-lg bg-black border border-zinc-800 font-mono text-xs text-zinc-200 overflow-x-auto">
-                curl -fsSL http://&lt;LEADER_HOST&gt;:3000/agent_install | bash -s -- --token &lt;SECRET_KEY&gt;
+                curl -fsSL {currentOrigin}/agent_install | bash -s -- --token &lt;AGENT_TOKEN&gt;
               </pre>
               <button
                 onClick={() =>
                   copyCode(
                     "agent",
-                    "curl -fsSL http://<LEADER_HOST>:3000/agent_install | bash -s -- --token <SECRET_KEY>"
+                    `curl -fsSL ${currentOrigin}/agent_install | bash -s -- --token <AGENT_TOKEN>`
                   )
                 }
                 className="absolute top-3 right-3 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] font-mono text-zinc-300 flex items-center gap-1"
               >
-                {copiedSection === "agent" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedSection === "agent" ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
                 <span>{copiedSection === "agent" ? "Copied" : "Copy"}</span>
               </button>
             </div>
 
             <p className="text-xs text-zinc-400">
-              Alternatively, use Docker to run the agent:
+              Alternatively, use Docker to run the agent in a lightweight container:
             </p>
 
             <pre className="p-4 rounded-lg bg-black border border-zinc-800 font-mono text-xs text-zinc-300 overflow-x-auto leading-relaxed">
@@ -194,32 +256,33 @@ export default function DocsPage() {
   --restart always \\
   --net host \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  -e SHIPYARD_LEADER_URL=http://<LEADER_HOST>:3000 \\
-  -e SHIPYARD_AGENT_TOKEN=<SECRET_KEY> \\
-  node:20-alpine sh -c "curl -fsSL http://<LEADER_HOST>:3000/agent_install | bash -s -- --token <SECRET_KEY>"`}
+  -e SHIPYARD_LEADER_URL=${currentOrigin} \\
+  -e SHIPYARD_AGENT_TOKEN=<AGENT_TOKEN> \\
+  node:20-alpine sh -c "curl -fsSL ${currentOrigin}/agent_install | bash -s -- --token <AGENT_TOKEN>"`}
             </pre>
           </section>
 
-          {/* Section 4: File Editor */}
+          {/* Section 5: File Editor */}
           <section id="file-editor" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-purple-400">
               <FileCode className="w-4 h-4" />
               <span>DEVELOPER WORKFLOW</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
-              In-Browser File Editor & Static Hosting
+              In-Browser File Editor &amp; Static Hosting
             </h2>
             <p>
-              Shipyard includes a built-in file editor and upload manager. You can create projects directly by uploading HTML, CSS, and JS files without needing a Git repository.
+              Shipyard includes a built-in file editor and upload manager. You can create projects directly by uploading HTML, CSS, and JS files without needing a Git repository:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-xs text-zinc-400">
               <li>Upload individual files or multi-file web assets via the project editor.</li>
               <li>Edit code directly inside the browser with live syntax buffers.</li>
               <li>Click &ldquo;Save &amp; Redeploy&rdquo; to instantaneously rebuild the container and update live reverse proxy routes.</li>
+              <li>All web asset types (<code className="text-zinc-200">.html, .css, .js, .json, .svg, .png</code>) are served with full MIME-type fidelity and security guards.</li>
             </ul>
           </section>
 
-          {/* Section 5: Git Auto Deploy */}
+          {/* Section 6: Git Auto Deploy */}
           <section id="git-auto-deploy" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
               <Terminal className="w-4 h-4" />
@@ -232,35 +295,35 @@ export default function DocsPage() {
               Every project provides a dedicated GitHub webhook URL:
             </p>
             <pre className="p-3 bg-black border border-zinc-800 rounded font-mono text-xs text-emerald-400">
-              http://&lt;LEADER_HOST&gt;:3000/api/webhooks/github
+              {currentOrigin}/api/webhooks/github
             </pre>
             <p className="text-xs text-zinc-400">
-              When configured in GitHub (Payload URL &rarr; Content type: <code className="text-zinc-200">application/json</code>), every push to the monitored branch automatically triggers a zero-downtime deployment.
+              When configured in GitHub (Payload URL &rarr; Content type: <code className="text-zinc-200">application/json</code>), every push to the monitored branch automatically triggers a zero-downtime deployment with live SSE build logs.
             </p>
           </section>
 
-          {/* Section 6: Domains */}
+          {/* Section 7: Domains */}
           <section id="custom-domains" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-blue-400">
               <Globe className="w-4 h-4" />
               <span>NETWORKING</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
-              Custom Domains & Automated SSL
+              Custom Domains &amp; Automated SSL
             </h2>
             <p>
-              Shipyard dynamically assigns collision-free internal ports (30000-39999) and connects them to a Caddy reverse proxy. Adding a custom domain provisions automated Let&apos;s Encrypt SSL certificates.
+              Shipyard dynamically assigns collision-free internal ports (30000-39999) and connects them to a Caddy reverse proxy. Adding a custom domain provisions automated Let&apos;s Encrypt SSL certificates with zero manual certbot configuration.
             </p>
           </section>
 
-          {/* Section 7: Security Vault */}
+          {/* Section 8: Security Vault */}
           <section id="security-vault" className="space-y-4 scroll-mt-20 border-t border-zinc-800/80 pt-8">
             <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
               <Shield className="w-4 h-4" />
-              <span>SECURITY & ENCRYPTION</span>
+              <span>SECURITY &amp; ENCRYPTION</span>
             </div>
             <h2 className="text-2xl font-bold text-zinc-100 tracking-tight">
-              AES-256-GCM Vault & Zero-Trust
+              AES-256-GCM Vault &amp; Zero-Trust
             </h2>
             <p>
               All project environment variables and server tokens are encrypted at rest using AES-256-GCM authenticated encryption. Variables are never exposed in build logs or UI responses unless explicitly decrypted by an authorized admin session.
