@@ -27,15 +27,15 @@ ENV NODE_ENV=production
 # Provide a dummy DATABASE_URL so Prisma generate succeeds without a live DB
 ENV DATABASE_URL=postgresql://shipyard:secret@localhost:5432/shipyard
 
-# Generate Prisma client (schema types only - no DB connection needed)
-RUN node ./node_modules/prisma/build/index.js generate
+# Tell next.config.js to use standalone output (lean bundle for Docker)
+ENV SHIPYARD_STANDALONE=1
 
-# Build Next.js in standalone mode (set in next.config.js)
+# Build (safe-build.js runs prisma generate then next build)
 RUN npm run build
 
 # ── Stage 3: Production Runner ────────────────────────────────────────────────
 FROM node:20-alpine AS runner
-RUN apk add --no-cache curl bash openssl docker-cli
+RUN apk add --no-cache curl bash openssl docker-cli netcat-openbsd
 
 WORKDIR /app
 
