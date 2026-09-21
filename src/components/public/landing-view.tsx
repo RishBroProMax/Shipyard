@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Anchor,
@@ -30,32 +30,21 @@ import {
   Sparkles,
   Monitor,
   CheckCircle2,
-  Sliders,
+  FolderTree,
+  Laptop,
   Play,
-  Box,
-  Key,
-  FolderGit2,
   ArrowUpRight,
+  ShieldCheck,
+  Boxes,
 } from "lucide-react";
 import ShapeWaves from "@/components/ui/ShapeWaves";
 
 export function LandingView() {
   const [copied, setCopied] = useState(false);
   const [activeInstallTab, setActiveInstallTab] = useState<"appliance" | "agent">("appliance");
-  const [selectedArch, setSelectedArch] = useState<"x86_64" | "arm64">("x86_64");
-  const [activeDemoTab, setActiveDemoTab] = useState<"pipeline" | "editor" | "cluster">("pipeline");
+  const [activeShowcaseTab, setActiveShowcaseTab] = useState<"overview" | "editor" | "telemetry" | "git">("overview");
   const [currentOrigin, setCurrentOrigin] = useState("https://shipyard.example");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  
-  // Interactive Simulator State
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [deployStep, setDeployStep] = useState(4);
-  const [activeNode, setActiveNode] = useState<string>("leader-ny-01");
-  const [nodePings, setNodePings] = useState<Record<string, number>>({
-    "leader-ny-01": 1.2,
-    "worker-fra-02": 38.4,
-    "worker-sgp-03": 89.1,
-  });
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -64,742 +53,615 @@ export function LandingView() {
   }, []);
 
   const applianceCmd = `curl -fsSL ${currentOrigin}/install.sh | sh`;
-  const agentCmd = `curl -fsSL ${currentOrigin}/agent_install | sh -s -- --token sk_live_${selectedArch}_9f82d1`;
+  const agentCmd = `curl -fsSL ${currentOrigin}/agent_install | sh -s -- --token <CLUSTER_TOKEN>`;
   const activeCmd = activeInstallTab === "appliance" ? applianceCmd : agentCmd;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(activeCmd);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2200);
-  };
-
-  const triggerMockDeploy = () => {
-    if (isDeploying) return;
-    setIsDeploying(true);
-    setDeployStep(0);
-    const intervals = [700, 1400, 2200, 3100, 4000];
-    intervals.forEach((delay, idx) => {
-      setTimeout(() => {
-        setDeployStep(idx);
-        if (idx === intervals.length - 1) {
-          setIsDeploying(false);
-        }
-      }, delay);
-    });
-  };
-
-  const pingNode = (nodeId: string) => {
-    setActiveNode(nodeId);
-    setNodePings((prev) => ({
-      ...prev,
-      [nodeId]: +(Math.random() * 8 + (nodeId.includes("ny") ? 1 : nodeId.includes("fra") ? 36 : 85)).toFixed(1),
-    }));
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen bg-[#050608] text-zinc-100 font-sans selection:bg-cyan-500/30 selection:text-cyan-200 relative overflow-x-hidden">
-      {/* Tactical Grid Background Overlay */}
-      <div className="fixed inset-0 bg-grid-pattern opacity-[0.35] pointer-events-none z-0" />
-
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-cyan-500/20 selection:text-cyan-200">
       {/* Top Navbar */}
-      <header className="h-16 border-b border-zinc-800/80 bg-[#050608]/80 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 rounded border border-cyan-500/40 bg-cyan-950/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(0,240,255,0.2)] group-hover:border-cyan-400 transition-colors">
+      <header className="h-16 border-b border-zinc-800/80 bg-[#09090b]/85 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-cyan-400 group-hover:border-cyan-500/50 transition-colors shadow-sm">
               <Anchor className="w-4 h-4" />
             </div>
-            <div className="flex flex-col">
-              <span className="font-mono text-sm font-black tracking-widest text-white flex items-center gap-2">
-                SHIPYARD
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950 text-cyan-300 font-mono font-normal border border-cyan-800/50">
-                  PaaS
-                </span>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base tracking-tight text-white">
+                Shipyard
               </span>
-              <span className="text-[9px] font-mono text-zinc-500 -mt-0.5 tracking-wider hidden sm:block">
-                SYS_SPEC // BARE-METAL APPLIANCE
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-cyan-300 font-medium">
+                PaaS Appliance
               </span>
             </div>
           </Link>
+
+          <nav className="hidden md:flex items-center gap-5 text-sm text-zinc-400">
+            <a href="#features" className="hover:text-zinc-100 transition-colors">
+              Features
+            </a>
+            <a href="#how-it-works" className="hover:text-zinc-100 transition-colors">
+              How It Works
+            </a>
+            <a href="#comparison" className="hover:text-zinc-100 transition-colors">
+              Comparison
+            </a>
+            <Link href="/docs" className="hover:text-zinc-100 transition-colors">
+              Documentation
+            </Link>
+          </nav>
         </div>
 
-        {/* Center coordinates ticker */}
-        <div className="hidden md:flex items-center gap-4 text-[11px] font-mono text-zinc-500 border-x border-zinc-800/80 px-4 py-1">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            <span className="text-zinc-300">CORE_TELEMETRY:</span> ACTIVE
-          </span>
-          <span className="text-zinc-600">|</span>
-          <span>LAT: 37°46&apos;N</span>
-          <span>LON: 122°25&apos;W</span>
-          <span className="text-zinc-600">|</span>
-          <span className="text-cyan-400">0_MOCK_DATA</span>
-        </div>
-
-        <nav className="flex items-center gap-3 sm:gap-6 text-xs font-mono">
-          <Link href="/docs" className="text-zinc-400 hover:text-cyan-300 transition-colors flex items-center gap-1">
-            <span>DOCS</span>
-            <ArrowUpRight className="w-3 h-3 text-zinc-600" />
-          </Link>
+        <div className="flex items-center gap-3">
           <a
             href="https://github.com/RishBroProMax/Shipyard"
             target="_blank"
             rel="noreferrer"
-            className="text-zinc-400 hover:text-white transition-colors hidden sm:flex items-center gap-1"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-md hover:bg-zinc-900 transition-colors"
           >
-            <span>GITHUB</span>
-            <ExternalLink className="w-3 h-3 text-zinc-600" />
+            <span>GitHub</span>
+            <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
           </a>
           <Link
             href="/docs#quickstart"
-            className="px-3.5 py-1.5 rounded bg-cyan-400 hover:bg-cyan-300 text-zinc-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-[0_0_20px_rgba(0,240,255,0.25)] hover:scale-[1.02]"
+            className="px-4 py-2 rounded-lg bg-white hover:bg-zinc-200 text-zinc-950 font-medium text-xs flex items-center gap-1.5 transition-all shadow-sm"
           >
-            <span>INSTALL VPS</span>
+            <span>Deploy to VPS</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-        </nav>
+        </div>
       </header>
 
-      {/* Hero Section with ReactBits ShapeWaves Background */}
-      <section className="relative min-h-[760px] flex flex-col items-center justify-center pt-24 pb-20 px-6 z-10">
-        {/* ReactBits ShapeWaves Canvas Layer */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
+      {/* Hero Section with React Bits ShapeWaves Background */}
+      <section className="relative overflow-hidden pt-24 pb-20 px-6 min-h-[680px] flex flex-col items-center justify-center">
+        {/* React Bits ShapeWaves Dynamic Canvas */}
+        <div className="absolute inset-0 z-0 pointer-events-auto">
           <ShapeWaves
             shapes="mixed"
             cellSize={28}
-            dotSize={0.7}
-            color="#121824"
-            hoverColor="#00f0ff"
+            dotSize={0.65}
+            color="#27272a"
+            hoverColor="#38bdf8"
             backgroundColor="transparent"
             speed={0.8}
-            scale={1.2}
-            contrast={1.2}
+            scale={1.1}
+            contrast={1.1}
             brightness={0.4}
             flow={0.2}
-            direction={55}
-            fade={0.35}
+            direction={45}
+            fade={0.4}
             interactive={true}
-            splashRadius={190}
-            splashStrength={1.1}
-            glow={0.55}
-            className="w-full h-full opacity-65"
+            splashRadius={170}
+            splashStrength={0.9}
+            glow={0.45}
+            className="w-full h-full opacity-60"
           />
-          {/* Subtle Vignettes for High Contrast Typographic Readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#050608]/70 via-transparent to-[#050608] pointer-events-none" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_35%,rgba(0,240,255,0.08),transparent)] pointer-events-none" />
+          {/* Subtle gradient vignette to blend into dark canvas */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#09090b]/40 via-transparent to-[#09090b] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_30%,rgba(56,189,248,0.06),transparent)] pointer-events-none" />
         </div>
 
-        {/* Hero Tactical HUD Frame */}
-        <div className="relative z-10 max-w-5xl mx-auto text-center space-y-8">
-          {/* Tactical Pill Status */}
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-[#0c1017]/90 border border-cyan-500/30 backdrop-blur-md text-xs font-mono shadow-[0_0_25px_rgba(0,240,255,0.12)]">
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>APPLIANCE V1.0</span>
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-4xl mx-auto text-center space-y-7">
+          {/* Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur-md text-xs text-zinc-300 shadow-md">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-medium text-zinc-200">v1.0 Production Ready</span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-zinc-400">Zero Configuration PaaS Appliance</span>
+          </div>
+
+          {/* Headline */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white max-w-4xl mx-auto leading-[1.08]">
+            The self-hosted platform <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 via-zinc-300 to-cyan-400">
+              for developers who ship.
             </span>
-            <span className="text-zinc-600">/</span>
-            <span className="text-zinc-300">DUAL-MODE CLUSTER ENGINE</span>
-            <span className="text-zinc-600">/</span>
-            <span className="text-cyan-400 font-semibold">100% HARDWARE TELEMETRY</span>
-          </div>
+          </h1>
 
-          {/* Monumental Headline */}
-          <div className="space-y-3">
-            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white uppercase leading-[0.95] font-display">
-              The Bare-Metal <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-cyan-400">
-                PaaS Appliance.
-              </span>
-            </h1>
-            <p className="text-xs sm:text-sm font-mono text-cyan-400/80 tracking-widest uppercase">
-              // NO KUBERNETES YAML // NO MOCK DATA // ZERO CONFIGURATION
-            </p>
-          </div>
-
-          {/* Subtitle Description */}
-          <p className="text-base sm:text-lg text-zinc-300 max-w-2xl mx-auto leading-relaxed font-light">
-            Transform any clean Linux VPS into an industrial-grade developer platform in 60 seconds. Shipyard automatically initializes PostgreSQL 16, Redis 7, Caddy SSL, and isolated Docker sandboxes with genuine kernel-level telemetry.
+          {/* Subtitle */}
+          <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
+            Transform any clean Linux VPS into your personal deployment platform in 60 seconds. Push to Git or drag-and-drop raw files with automatic PostgreSQL, Redis, reverse proxies, and SSL certificates.
           </p>
 
-          {/* Industrial Command Console & Architecture Selector */}
-          <div className="max-w-2xl mx-auto pt-2 space-y-3">
-            {/* Tab Controls & Arch Switcher */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1 rounded-lg border border-zinc-800 text-xs font-mono">
-                <button
-                  onClick={() => setActiveInstallTab("appliance")}
-                  className={`px-3 py-1 rounded transition-colors ${
-                    activeInstallTab === "appliance"
-                      ? "bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold"
-                      : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  1. Leader VPS Appliance
-                </button>
-                <button
-                  onClick={() => setActiveInstallTab("agent")}
-                  className={`px-3 py-1 rounded transition-colors ${
-                    activeInstallTab === "agent"
-                      ? "bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-semibold"
-                      : "text-zinc-400 hover:text-zinc-200"
-                  }`}
-                >
-                  2. Remote Worker Node
-                </button>
-              </div>
-
-              {/* Arch Toggle */}
-              <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-400 bg-zinc-900/80 p-1 rounded border border-zinc-800">
-                <span className="text-zinc-500 px-1">ARCH:</span>
-                <button
-                  onClick={() => setSelectedArch("x86_64")}
-                  className={`px-2 py-0.5 rounded ${
-                    selectedArch === "x86_64" ? "bg-zinc-800 text-cyan-300 font-bold" : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  x86_64
-                </button>
-                <button
-                  onClick={() => setSelectedArch("arm64")}
-                  className={`px-2 py-0.5 rounded ${
-                    selectedArch === "arm64" ? "bg-zinc-800 text-cyan-300 font-bold" : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  ARM64
-                </button>
-              </div>
+          {/* Tabbed 1-Click Install Command Box */}
+          <div className="max-w-xl mx-auto pt-2 space-y-2.5">
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setActiveInstallTab("appliance")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  activeInstallTab === "appliance"
+                    ? "bg-zinc-800 text-white border border-zinc-700"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                1-Line VPS Install
+              </button>
+              <button
+                onClick={() => setActiveInstallTab("agent")}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  activeInstallTab === "agent"
+                    ? "bg-zinc-800 text-white border border-zinc-700"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Worker Node Agent
+              </button>
             </div>
 
-            {/* Tactical Command Box */}
-            <div className="relative flex items-center bg-[#090d14]/95 border border-cyan-500/30 rounded-xl p-4 shadow-2xl backdrop-blur font-mono text-xs text-zinc-100 group hover:border-cyan-400/60 transition-all">
-              <span className="text-cyan-400 font-bold select-none mr-3 text-sm">#</span>
-              <span className="flex-1 text-left select-all truncate text-cyan-100 font-medium">
+            {/* Command Container */}
+            <div className="relative flex items-center bg-[#0d0e12]/95 border border-zinc-800 rounded-xl p-3.5 shadow-2xl backdrop-blur font-mono text-xs text-zinc-200 group hover:border-zinc-700 transition-all">
+              <span className="text-cyan-400 font-semibold select-none mr-2.5">$</span>
+              <span className="flex-1 text-left select-all truncate text-zinc-200">
                 {activeCmd}
               </span>
               <button
                 onClick={handleCopy}
-                className="px-4 py-2 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-xs text-cyan-300 flex items-center gap-2 transition-all border border-cyan-700/60 active:scale-95 shrink-0 ml-3 shadow-[0_0_15px_rgba(0,240,255,0.15)]"
+                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-200 flex items-center gap-1.5 transition-all border border-zinc-700 active:scale-95 shrink-0 ml-2"
                 title="Copy installation command"
               >
                 {copied ? (
                   <>
-                    <Check className="w-4 h-4 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold">COPIED!</span>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-medium">Copied</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-4 h-4 text-cyan-400" />
-                    <span className="font-bold tracking-wider">COPY CMD</span>
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Copy</span>
                   </>
                 )}
               </button>
             </div>
 
-            {/* Spec Checklist Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-zinc-400 font-mono pt-1">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs text-zinc-400 pt-1">
               <span className="flex items-center gap-1.5 text-zinc-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" /> Auto Postgres 16 &amp; Redis 7
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Auto Postgres 16 &amp; Redis 7
               </span>
               <span className="flex items-center gap-1.5 text-zinc-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Let&apos;s Encrypt SSL Auto-Routing
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Let&apos;s Encrypt Auto-SSL
               </span>
               <span className="flex items-center gap-1.5 text-zinc-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> AES-256 Vault Encryption
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Zero Mock Telemetry
               </span>
-            </div>
-          </div>
-
-          {/* Real Telemetry Counter Gauges */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-6 border-t border-zinc-800/80">
-            <div className="p-4 rounded-xl bg-[#090d14]/70 border border-zinc-800 text-left space-y-1">
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">BOOTSTRAP_TIME</div>
-              <div className="text-2xl font-mono font-bold text-cyan-400">60.0s</div>
-              <div className="text-[11px] text-zinc-400">Zero manual DB queries</div>
-            </div>
-            <div className="p-4 rounded-xl bg-[#090d14]/70 border border-zinc-800 text-left space-y-1">
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">MOCK_DATA_INDEX</div>
-              <div className="text-2xl font-mono font-bold text-emerald-400">0.00%</div>
-              <div className="text-[11px] text-zinc-400">Direct kernel os counters</div>
-            </div>
-            <div className="p-4 rounded-xl bg-[#090d14]/70 border border-zinc-800 text-left space-y-1">
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">RUNTIME_FOOTPRINT</div>
-              <div className="text-2xl font-mono font-bold text-purple-400">&lt; 140 MB</div>
-              <div className="text-[11px] text-zinc-400">Runs smoothly on $5 VPS</div>
-            </div>
-            <div className="p-4 rounded-xl bg-[#090d14]/70 border border-zinc-800 text-left space-y-1">
-              <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">VAULT_CIPHER</div>
-              <div className="text-2xl font-mono font-bold text-amber-400">AES-256</div>
-              <div className="text-[11px] text-zinc-400">GCM authenticated at rest</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Interactive Drydock Command Center (Simulator) */}
-      <section className="px-6 max-w-6xl mx-auto pb-28 relative z-20">
-        <div className="border border-cyan-500/30 rounded-2xl bg-[#080b11] shadow-[0_0_50px_rgba(0,240,255,0.06)] overflow-hidden">
-          {/* Terminal Console Header */}
-          <div className="px-6 py-4 bg-[#0d121c] border-b border-zinc-800 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+      {/* Interactive Control Plane Showcase */}
+      <section className="px-6 max-w-5xl mx-auto pb-24">
+        <div className="rounded-2xl border border-zinc-800 bg-[#0d0e12] shadow-2xl overflow-hidden">
+          {/* Mock Browser Header */}
+          <div className="px-4 py-3 bg-zinc-900/90 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-red-500/80" />
                 <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
                 <span className="w-3 h-3 rounded-full bg-green-500/80" />
               </div>
-              <span className="text-zinc-400 font-bold border-l border-zinc-700 pl-3">
-                DRYDOCK_SIMULATOR // SHIPYARD-CLUSTER
-              </span>
+              <div className="bg-black/50 px-3 py-1 rounded-md text-zinc-400 text-xs font-mono border border-zinc-800/80 hidden sm:block">
+                https://shipyard.local/dashboard
+              </div>
             </div>
 
-            {/* Interactive Module Switcher */}
+            {/* Showcase View Tabs */}
             <div className="flex items-center gap-1 bg-black/60 p-1 rounded-lg border border-zinc-800">
               <button
-                onClick={() => setActiveDemoTab("pipeline")}
-                className={`px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 ${
-                  activeDemoTab === "pipeline"
-                    ? "bg-cyan-950 text-cyan-300 font-bold border border-cyan-800"
+                onClick={() => setActiveShowcaseTab("overview")}
+                className={`px-3 py-1 rounded text-xs transition-colors ${
+                  activeShowcaseTab === "overview"
+                    ? "bg-zinc-800 text-white font-medium shadow-sm"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                <GitBranch className="w-3.5 h-3.5" />
-                <span>Git CI/CD Pipeline</span>
+                Workloads
               </button>
               <button
-                onClick={() => setActiveDemoTab("editor")}
-                className={`px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 ${
-                  activeDemoTab === "editor"
-                    ? "bg-purple-950 text-purple-300 font-bold border border-purple-800"
+                onClick={() => setActiveShowcaseTab("editor")}
+                className={`px-3 py-1 rounded text-xs transition-colors ${
+                  activeShowcaseTab === "editor"
+                    ? "bg-zinc-800 text-white font-medium shadow-sm"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                <FileCode className="w-3.5 h-3.5" />
-                <span>In-Browser IDE</span>
+                In-Browser IDE
               </button>
               <button
-                onClick={() => setActiveDemoTab("cluster")}
-                className={`px-3 py-1.5 rounded text-xs transition-colors flex items-center gap-1.5 ${
-                  activeDemoTab === "cluster"
-                    ? "bg-emerald-950 text-emerald-300 font-bold border border-emerald-800"
+                onClick={() => setActiveShowcaseTab("telemetry")}
+                className={`px-3 py-1 rounded text-xs transition-colors ${
+                  activeShowcaseTab === "telemetry"
+                    ? "bg-zinc-800 text-white font-medium shadow-sm"
                     : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                <Server className="w-3.5 h-3.5" />
-                <span>Multi-Node Mesh</span>
+                Real Telemetry
+              </button>
+              <button
+                onClick={() => setActiveShowcaseTab("git")}
+                className={`px-3 py-1 rounded text-xs transition-colors ${
+                  activeShowcaseTab === "git"
+                    ? "bg-zinc-800 text-white font-medium shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                Live Deployment
               </button>
             </div>
 
-            <div className="flex items-center gap-2 text-emerald-400 font-bold text-[11px]">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>CLUSTER STATUS: HEALTHY</span>
+            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>All Systems Operational</span>
             </div>
           </div>
 
-          {/* Module 1: Live Git Pipeline */}
-          {activeDemoTab === "pipeline" && (
-            <div className="p-6 sm:p-8 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-                <div>
-                  <div className="text-sm font-bold text-white font-mono">Live Webhook Deployment Stream</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">
-                    Click &quot;Trigger Commit&quot; to test the real-time build and traffic shift pipeline.
+          {/* Showcase View Body */}
+          <div className="p-6 text-zinc-300 min-h-[300px]">
+            {activeShowcaseTab === "overview" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="text-xs text-zinc-400">Total Workloads</div>
+                    <div className="text-2xl font-bold text-white mt-1">12 Active</div>
+                    <div className="text-xs text-emerald-400 mt-0.5">100% healthy containers</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="text-xs text-zinc-400">Cluster RAM</div>
+                    <div className="text-2xl font-bold text-cyan-400 mt-1">4.2 / 16 GB</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">26% utilized</div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800">
+                    <div className="text-xs text-zinc-400">Reverse Proxy SSL</div>
+                    <div className="text-2xl font-bold text-emerald-400 mt-1">Automatic</div>
+                    <div className="text-xs text-zinc-400 mt-0.5">Let&apos;s Encrypt renewed</div>
                   </div>
                 </div>
-                <button
-                  onClick={triggerMockDeploy}
-                  disabled={isDeploying}
-                  className="px-4 py-2 rounded bg-cyan-400 hover:bg-cyan-300 text-zinc-950 font-mono font-bold text-xs flex items-center gap-2 transition-all disabled:opacity-50 self-start sm:self-auto"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isDeploying ? "animate-spin" : ""}`} />
-                  <span>{isDeploying ? "DEPLOYING PIPELINE..." : "TRIGGER TEST COMMIT"}</span>
-                </button>
-              </div>
 
-              {/* Step Sequence Visualizer */}
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 font-mono text-xs">
-                {[
-                  { title: "1. Webhook Rx", desc: "Commit sha #a920e received" },
-                  { title: "2. AES-256 Vault", desc: "Decrypted secrets at rest" },
-                  { title: "3. Docker Build", desc: "Isolated build sandbox" },
-                  { title: "4. Healthcheck", desc: "HTTP 200 OK (latency: 2ms)" },
-                  { title: "5. Zero-Downtime", desc: "Caddy port switch :30042" },
-                ].map((step, idx) => {
-                  const isDone = deployStep >= idx;
-                  const isCurrent = deployStep === idx && isDeploying;
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-3.5 rounded-xl border transition-all ${
-                        isCurrent
-                          ? "bg-cyan-950/40 border-cyan-400 text-cyan-200 glow-cyan"
-                          : isDone
-                          ? "bg-zinc-900/60 border-emerald-500/40 text-emerald-300"
-                          : "bg-black/40 border-zinc-800 text-zinc-600"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold">{step.title}</span>
-                        {isDone ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <span className="w-2 h-2 rounded-full bg-zinc-800" />
-                        )}
+                {/* Sample App Cards */}
+                <div className="border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800/80 bg-black/40 text-xs">
+                  <div className="p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <div>
+                        <div className="font-semibold text-white">storefront-web</div>
+                        <div className="text-zinc-500 font-mono text-[11px]">https://shop.example.com</div>
                       </div>
-                      <div className="text-[10px] text-zinc-400">{step.desc}</div>
                     </div>
-                  );
-                })}
+                    <div className="flex items-center gap-4 text-zinc-400">
+                      <span>Node.js 20</span>
+                      <span className="text-emerald-400">Port :30004</span>
+                      <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-200">Production</span>
+                    </div>
+                  </div>
+                  <div className="p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <div>
+                        <div className="font-semibold text-white">auth-service-api</div>
+                        <div className="text-zinc-500 font-mono text-[11px]">https://auth.example.com</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-zinc-400">
+                      <span>Go 1.22</span>
+                      <span className="text-emerald-400">Port :30008</span>
+                      <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-200">Production</span>
+                    </div>
+                  </div>
+                  <div className="p-3.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <div>
+                        <div className="font-semibold text-white">landing-page-static</div>
+                        <div className="text-zinc-500 font-mono text-[11px]">In-Browser File Studio</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-zinc-400">
+                      <span>Static HTML/CSS</span>
+                      <span className="text-emerald-400">Port :30012</span>
+                      <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-200">Live</span>
+                    </div>
+                  </div>
+                </div>
               </div>
+            )}
 
-              {/* Real-Time Terminal Log Output */}
-              <div className="p-4 rounded-xl bg-black border border-zinc-850 font-mono text-xs text-zinc-300 space-y-1.5">
-                <div className="text-zinc-500">// Real-time build log streaming via Server-Sent Events (SSE)</div>
+            {activeShowcaseTab === "editor" && (
+              <div className="space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800 text-zinc-400 text-xs">
+                  <span>File: public/index.html</span>
+                  <span className="text-emerald-400">● Live Preview Active</span>
+                </div>
+                <div className="p-4 rounded-xl bg-black border border-zinc-800 space-y-1 text-zinc-300">
+                  <div className="text-zinc-500">// Upload or edit static web files with instant Save &amp; Redeploy</div>
+                  <div>&lt;<span className="text-cyan-400">h1</span> class=&quot;headline&quot;&gt;Welcome to My Live App&lt;/<span className="text-cyan-400">h1</span>&gt;</div>
+                  <div>&lt;<span className="text-cyan-400">p</span>&gt;Served directly through Shipyard dynamic Caddy reverse proxy.&lt;/<span className="text-cyan-400">p</span>&gt;</div>
+                </div>
+                <div className="flex justify-end pt-1">
+                  <button className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-semibold text-xs flex items-center gap-1.5 transition-colors">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Save &amp; Live Redeploy (250ms)</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeShowcaseTab === "telemetry" && (
+              <div className="space-y-4 text-xs font-mono">
+                <div className="text-zinc-400">
+                  Genuine hardware metrics read directly from host OS kernel (0 mock data):
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-xl bg-black/60 border border-zinc-800 space-y-2">
+                    <div className="text-white font-semibold">Host Node: leader-master-01</div>
+                    <div className="text-zinc-400">CPU: 8 Cores (Average Load: 12.4%)</div>
+                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-cyan-400 h-full w-[12.4%]" />
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/60 border border-zinc-800 space-y-2">
+                    <div className="text-white font-semibold">System RAM Allocation</div>
+                    <div className="text-zinc-400">3.8 GB / 16.0 GB (23.7% Used)</div>
+                    <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-400 h-full w-[23.7%]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeShowcaseTab === "git" && (
+              <div className="space-y-2 font-mono text-xs">
                 <div className="text-cyan-400 font-semibold">
-                  [19:04:11] Webhook received for repo: &apos;github.com/acme/checkout-api&apos; (branch: master)
+                  [19:14:02] GitHub Webhook: commit 8f2a1b9 (&quot;feat: modernize payments flow&quot;) received
                 </div>
                 <div className="text-zinc-400">
-                  [19:04:12] Spawning isolated worker sandbox (Container ID: d91a0f8b2c)
+                  [19:14:03] Supervisor: resolving environment secrets from AES-256 vault
                 </div>
                 <div className="text-zinc-400">
-                  [19:04:14] Prisma migrate deploy: 4 migrations verified cleanly
+                  [19:14:05] Runner: isolated Docker sandbox built in 3.4s
                 </div>
                 <div className="text-zinc-400">
-                  [19:04:17] Next.js production build: 29 routes compiled in 4.8s
+                  [19:14:07] Healthcheck: GET /api/health returned HTTP 200 OK (2ms)
                 </div>
-                <div className="text-emerald-400 font-bold">
-                  [19:04:18] Healthcheck GET /api/health passed &rarr; Caddy reverse proxy cutover live (0ms downtime)
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Module 2: In-Browser IDE Preview */}
-          {activeDemoTab === "editor" && (
-            <div className="p-6 sm:p-8 space-y-6">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-                <div>
-                  <div className="text-sm font-bold text-white font-mono">In-Browser File Editor &amp; Static Hosting</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">
-                    Drag and drop raw HTML, CSS, JS or edit live code directly in your browser.
-                  </div>
-                </div>
-                <span className="px-3 py-1 rounded bg-purple-950/60 border border-purple-800 text-purple-300 font-mono text-xs">
-                  HOT-RELOAD: 240ms
-                </span>
-              </div>
-
-              {/* IDE Split View */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
-                {/* File Tree */}
-                <div className="p-4 rounded-xl bg-black border border-zinc-800 space-y-2">
-                  <div className="text-zinc-500 font-bold uppercase text-[10px]">PROJECT_FILES</div>
-                  <div className="space-y-1 text-zinc-400">
-                    <div className="flex items-center gap-2 text-cyan-300 bg-zinc-900/80 px-2 py-1 rounded">
-                      <FileCode className="w-3.5 h-3.5" />
-                      <span>index.html</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-1 hover:text-zinc-200 cursor-pointer">
-                      <FileCode className="w-3.5 h-3.5" />
-                      <span>styles.css</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-1 hover:text-zinc-200 cursor-pointer">
-                      <FileCode className="w-3.5 h-3.5" />
-                      <span>app.js</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-2 py-1 hover:text-zinc-200 cursor-pointer">
-                      <Lock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>.env.production</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Editor Buffer */}
-                <div className="md:col-span-2 p-4 rounded-xl bg-black border border-zinc-800 space-y-2">
-                  <div className="flex justify-between text-zinc-500 text-[10px] border-b border-zinc-900 pb-2">
-                    <span>BUFFER: src/index.html</span>
-                    <span className="text-emerald-400 font-bold">SYNTAX: HTML5</span>
-                  </div>
-                  <div className="text-zinc-300 space-y-1 text-xs">
-                    <div>
-                      <span className="text-cyan-400">&lt;!DOCTYPE</span> <span className="text-amber-300">html</span>
-                      <span className="text-cyan-400">&gt;</span>
-                    </div>
-                    <div>
-                      <span className="text-cyan-400">&lt;html&gt;</span>
-                    </div>
-                    <div className="pl-4">
-                      <span className="text-cyan-400">&lt;body</span>{" "}
-                      <span className="text-amber-300">class</span>=&quot;bg-slate-950 text-white&quot;
-                      <span className="text-cyan-400">&gt;</span>
-                    </div>
-                    <div className="pl-8 text-emerald-300">
-                      &lt;h1&gt;Hosted Instantly on Shipyard Appliance&lt;/h1&gt;
-                    </div>
-                    <div className="pl-8 text-zinc-400">
-                      &lt;p&gt;No Git repo needed. Click Save &amp; Redeploy below.&lt;/p&gt;
-                    </div>
-                    <div className="pl-4">
-                      <span className="text-cyan-400">&lt;/body&gt;</span>
-                    </div>
-                    <div>
-                      <span className="text-cyan-400">&lt;/html&gt;</span>
-                    </div>
-                  </div>
-                  <div className="pt-4 flex justify-end">
-                    <button className="px-4 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2">
-                      <Zap className="w-3.5 h-3.5" />
-                      <span>Save &amp; Live Redeploy</span>
-                    </button>
-                  </div>
+                <div className="text-emerald-400 font-bold pt-2 border-t border-zinc-900">
+                  ✓ Deployment #18 LIVE &rarr; Caddy shifted traffic with zero downtime.
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Module 3: Multi-Node Mesh */}
-          {activeDemoTab === "cluster" && (
-            <div className="p-6 sm:p-8 space-y-6">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-                <div>
-                  <div className="text-sm font-bold text-white font-mono">Multi-Node Cluster Topology</div>
-                  <div className="text-xs text-zinc-400 mt-0.5">
-                    Click any node to test real-time latency and view kernel telemetry.
-                  </div>
-                </div>
-                <span className="text-xs font-mono text-cyan-400">
-                  CONNECTED NODES: 3/3 ONLINE
-                </span>
-              </div>
-
-              {/* Node Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
-                {[
-                  {
-                    id: "leader-ny-01",
-                    label: "LEADER // NY-01",
-                    role: "Appliance Supervisor & DB",
-                    ip: "198.51.100.4",
-                    cpu: "14.2%",
-                    ram: "4.2 / 16 GB",
-                  },
-                  {
-                    id: "worker-fra-02",
-                    label: "WORKER // FRA-02",
-                    role: "Docker Build Runner",
-                    ip: "198.51.100.89",
-                    cpu: "32.8%",
-                    ram: "8.1 / 32 GB",
-                  },
-                  {
-                    id: "worker-sgp-03",
-                    label: "WORKER // SGP-03",
-                    role: "Static Reverse Proxy",
-                    ip: "203.0.113.55",
-                    cpu: "6.1%",
-                    ram: "1.8 / 8 GB",
-                  },
-                ].map((node) => {
-                  const isSelected = activeNode === node.id;
-                  return (
-                    <div
-                      key={node.id}
-                      onClick={() => pingNode(node.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                        isSelected
-                          ? "bg-cyan-950/40 border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.15)]"
-                          : "bg-black/50 border-zinc-800 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-white">{node.label}</span>
-                        <span className="text-[10px] text-emerald-400 font-semibold">
-                          ● {nodePings[node.id]}ms
-                        </span>
-                      </div>
-                      <div className="text-zinc-400 text-[11px] mb-3">{node.role}</div>
-                      <div className="space-y-1 text-[11px] text-zinc-300 border-t border-zinc-900 pt-2">
-                        <div className="flex justify-between">
-                          <span className="text-zinc-500">IP ADDR:</span>
-                          <span>{node.ip}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-zinc-500">CPU LOAD:</span>
-                          <span className="text-cyan-400">{node.cpu}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-zinc-500">RAM USAGE:</span>
-                          <span>{node.ram}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 text-[11px] font-mono text-zinc-400 flex items-center justify-between">
-                <span>Want to join your own server? Copy the tokenized agent command above.</span>
-                <span className="text-cyan-400 font-bold">1 COMMAND TO JOIN</span>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
-      {/* Asymmetric Technical Bento Grid */}
-      <section className="px-6 max-w-6xl mx-auto pb-32 border-t border-zinc-800/80 pt-24 z-10 relative">
-        <div className="text-center mb-16 space-y-3">
-          <div className="inline-flex items-center gap-1.5 text-xs font-mono text-cyan-400 px-3.5 py-1 rounded-full bg-cyan-950/40 border border-cyan-800/40">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>FULL PRODUCTION SPECIFICATION</span>
+      {/* How It Works Section */}
+      <section id="how-it-works" className="px-6 max-w-5xl mx-auto pb-24 border-t border-zinc-800/80 pt-20">
+        <div className="text-center mb-14 space-y-3">
+          <div className="inline-flex items-center gap-1.5 text-xs text-cyan-400 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-800/40">
+            <Zap className="w-3.5 h-3.5" />
+            <span>SIMPLE &amp; POWERFUL</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight uppercase font-display">
-            Engineered for Total Sovereignty
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            How Shipyard Works in 3 Steps
           </h2>
           <p className="text-sm text-zinc-400 max-w-xl mx-auto">
-            Everything your team needs to deploy web apps, APIs, microservices, and databases without monthly per-seat SaaS taxes.
+            From a blank Linux server to a production deployment environment in minutes.
           </p>
         </div>
 
-        {/* Bento Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Zero Config (Span 2) */}
-          <div className="md:col-span-2 p-8 rounded-2xl bg-[#0a0d14] border border-zinc-800 hover:border-cyan-500/40 transition-all space-y-4 relative overflow-hidden group">
-            <div className="w-12 h-12 rounded-xl bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400 mb-2">
-              <Zap className="w-6 h-6" />
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
+            <div className="w-8 h-8 rounded-lg bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 flex items-center justify-center font-bold text-sm">
+              1
             </div>
-            <h3 className="text-xl font-bold text-white font-mono">
-              Zero Configuration Appliance Core
-            </h3>
-            <p className="text-sm text-zinc-300 leading-relaxed max-w-xl">
-              No manual database credentials, ports, or environment file setup. Shipyard&apos;s supervisor initializes PostgreSQL 16, Redis worker queues, and cryptographic master keys automatically on first boot.
+            <h3 className="text-base font-semibold text-white">Bootstrap with 1 Command</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Run <code className="text-zinc-200">curl .../install.sh | sh</code>. Shipyard installs Docker, configures PostgreSQL 16, starts Redis 7, generates encryption keys, and launches the Caddy proxy automatically.
             </p>
-            <div className="pt-2 flex flex-wrap gap-2 text-xs font-mono">
-              <span className="px-2.5 py-1 rounded bg-black/60 border border-zinc-800 text-zinc-300">
-                ✓ PostgreSQL 16 Auto-Migrate
-              </span>
-              <span className="px-2.5 py-1 rounded bg-black/60 border border-zinc-800 text-zinc-300">
-                ✓ Redis 7 BullMQ Engine
-              </span>
-              <span className="px-2.5 py-1 rounded bg-black/60 border border-zinc-800 text-zinc-300">
-                ✓ Caddy 2 Reverse Proxy
-              </span>
-            </div>
           </div>
 
-          {/* Card 2: Security Vault */}
-          <div className="p-8 rounded-2xl bg-[#0a0d14] border border-zinc-800 hover:border-amber-500/40 transition-all space-y-4 group">
-            <div className="w-12 h-12 rounded-xl bg-amber-950/60 border border-amber-800/40 flex items-center justify-center text-amber-400 mb-2">
-              <Shield className="w-6 h-6" />
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/40 text-emerald-400 flex items-center justify-center font-bold text-sm">
+              2
             </div>
-            <h3 className="text-lg font-bold text-white font-mono">AES-256-GCM Vault</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Environment secrets and tokens are encrypted at rest with hardware-accelerated AES-256-GCM authenticated ciphers. Untrusted builds run in rootless Docker containers.
+            <h3 className="text-base font-semibold text-white">Deploy from Git or Files</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Push your code to GitHub to trigger automated container builds with real-time SSE streaming logs, or upload HTML/CSS/JS files directly via the built-in file editor.
             </p>
-            <div className="text-[11px] font-mono text-amber-400">
-              ZERO PLAINTEXT LEAKS
-            </div>
           </div>
 
-          {/* Card 3: Multi-Node Clustering */}
-          <div className="p-8 rounded-2xl bg-[#0a0d14] border border-zinc-800 hover:border-emerald-500/40 transition-all space-y-4 group">
-            <div className="w-12 h-12 rounded-xl bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400 mb-2">
-              <Server className="w-6 h-6" />
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-950/60 border border-purple-800/40 text-purple-400 flex items-center justify-center font-bold text-sm">
+              3
             </div>
-            <h3 className="text-lg font-bold text-white font-mono">1-Line Cluster Scaling</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Scale out across unlimited servers. Join any remote VPS with one curl command. The agent connects outbound via TLS to execute builds with zero open inbound ports.
+            <h3 className="text-base font-semibold text-white">Automatic SSL &amp; Routing</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Shipyard allocates internal ports dynamically and routes external domains with automated Let&apos;s Encrypt certificates. Zero certbot configuration required.
             </p>
-            <div className="text-[11px] font-mono text-emerald-400">
-              OUTBOUND TLS ONLY
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Grid */}
+      <section id="features" className="px-6 max-w-6xl mx-auto pb-24 border-t border-zinc-800/80 pt-20">
+        <div className="text-center mb-14 space-y-3">
+          <div className="inline-flex items-center gap-1.5 text-xs text-cyan-400 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-800/40">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>FEATURES</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            Built for Developers Who Value Simplicity &amp; Speed
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-xl mx-auto">
+            Everything you need to host modern applications without complex cloud configurations.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cyan-400">
+              <Zap className="w-5 h-5" />
             </div>
+            <h3 className="text-base font-semibold text-zinc-100">Zero Configuration</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              No manual database credentials or environment file juggling. Shipyard configures all internal services automatically on first boot.
+            </p>
           </div>
 
-          {/* Card 4: In-Browser IDE & Static Hosting */}
-          <div className="p-8 rounded-2xl bg-[#0a0d14] border border-zinc-800 hover:border-purple-500/40 transition-all space-y-4 group">
-            <div className="w-12 h-12 rounded-xl bg-purple-950/60 border border-purple-800/40 flex items-center justify-center text-purple-400 mb-2">
-              <FileCode className="w-6 h-6" />
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400">
+              <Server className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-white font-mono">In-Browser File Studio</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Drag-and-drop HTML, CSS, JS or code inside the dashboard. Click &quot;Save &amp; Redeploy&quot; to instantaneously update live containers with zero Git commits needed.
+            <h3 className="text-base font-semibold text-zinc-100">Multi-Node Worker Clustering</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Join any remote VPS, server, or cloud instance with a single token command. Workers execute builds and stream hardware telemetry back to the leader.
             </p>
-            <div className="text-[11px] font-mono text-purple-400">
-              BUILT-IN STATIC HOSTING
-            </div>
           </div>
 
-          {/* Card 5: Reverse Proxy & Dynamic SSL */}
-          <div className="p-8 rounded-2xl bg-[#0a0d14] border border-zinc-800 hover:border-blue-500/40 transition-all space-y-4 group">
-            <div className="w-12 h-12 rounded-xl bg-blue-950/60 border border-blue-800/40 flex items-center justify-center text-blue-400 mb-2">
-              <Globe className="w-6 h-6" />
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-purple-400">
+              <FileCode className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-bold text-white font-mono">Dynamic Caddy &amp; Auto SSL</h3>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Dynamic port assignment (30000-39999) with integrated Caddy reverse proxy routing. Adding a custom domain automatically provisions Let&apos;s Encrypt TLS certificates.
+            <h3 className="text-base font-semibold text-zinc-100">In-Browser File Studio</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Upload raw HTML, CSS, and JS files or edit code in browser. Hit &quot;Save &amp; Redeploy&quot; to update your live app instantaneously.
             </p>
-            <div className="text-[11px] font-mono text-blue-400">
-              AUTOMATIC HTTPS
+          </div>
+
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-amber-400">
+              <GitBranch className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-semibold text-zinc-100">Git Push Auto-Deploy</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Connect your GitHub repository. Webhooks automatically trigger zero-downtime builds with real-time SSE terminal streaming and 1-click instant rollback.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-blue-400">
+              <Globe className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-semibold text-zinc-100">Dynamic Reverse Proxy &amp; SSL</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Dynamic port assignment (30000-39999) with integrated Caddy reverse proxy routing and automated Let&apos;s Encrypt SSL certificates for your custom domains.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-xl bg-zinc-950 border border-zinc-800 hover:border-zinc-700 transition-colors space-y-3">
+            <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-rose-400">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-semibold text-zinc-100">AES-256-GCM Secret Vault</h3>
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Environment variables and tokens are encrypted at rest with AES-256-GCM. Workloads execute inside isolated Docker sandboxes with no root leaks.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Deployment Modes Callout */}
+      <section className="px-6 max-w-5xl mx-auto pb-24">
+        <div className="p-8 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs text-cyan-400 mb-2">
+                <Layers className="w-3.5 h-3.5" />
+                <span>UNIFIED ARCHITECTURE</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white">
+                One Repository. Dual Operating Modes.
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xl leading-relaxed">
+                Deploy this exact repository on Vercel to serve the official public showcase &amp; docs, or run the installer script on any Linux VPS to launch the full self-contained PaaS control plane.
+              </p>
+            </div>
+            <Link
+              href="/docs"
+              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg text-xs font-medium shrink-0 self-start sm:self-auto transition-colors border border-zinc-700"
+            >
+              Read Docs &rarr;
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+            <div className="p-4 rounded-xl bg-black/60 border border-zinc-850 space-y-1.5">
+              <span className="text-cyan-400 font-semibold block">▲ Vercel Cloud Mode</span>
+              <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                Built as a lightning-fast serverless website serving the official landing page, technical documentation, and install script endpoints.
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-black/60 border border-zinc-850 space-y-1.5">
+              <span className="text-emerald-400 font-semibold block">⚓ Self-Hosted Appliance</span>
+              <p className="text-zinc-400 text-xs leading-relaxed font-sans">
+                Installed on your VPS with full Docker management, in-browser file editor, dynamic reverse proxy, real-time hardware telemetry, and automated deployments.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Comparison Matrix: Shipyard vs The World */}
-      <section className="px-6 max-w-5xl mx-auto pb-32 border-t border-zinc-800/80 pt-24">
-        <div className="text-center mb-16 space-y-3">
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight uppercase font-display">
-            The Infrastructure Crucible
+      {/* Comparison Table */}
+      <section id="comparison" className="px-6 max-w-5xl mx-auto pb-24 border-t border-zinc-800/80 pt-20">
+        <div className="text-center mb-12 space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            How Shipyard Compares
           </h2>
-          <p className="text-xs sm:text-sm text-zinc-400 max-w-lg mx-auto font-mono">
-            How Shipyard compares to legacy cloud platforms and complex orchestrators.
+          <p className="text-xs sm:text-sm text-zinc-400">
+            Why developers choose Shipyard over complex cloud infrastructure.
           </p>
         </div>
 
-        <div className="border border-cyan-500/30 rounded-2xl overflow-hidden bg-[#0a0d14] shadow-2xl font-mono text-xs">
+        <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950 text-xs">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-[#0f1420] border-b border-zinc-800 text-zinc-200">
-                  <th className="p-4 font-bold">CAPABILITY</th>
-                  <th className="p-4 font-bold text-cyan-400 bg-cyan-950/30">SHIPYARD APPLIANCE</th>
-                  <th className="p-4 font-bold text-zinc-400">HEROKU / AWS</th>
-                  <th className="p-4 font-bold text-zinc-400">KUBERNETES</th>
+                <tr className="bg-zinc-900/90 border-b border-zinc-800 text-zinc-300">
+                  <th className="p-4 font-semibold">Feature</th>
+                  <th className="p-4 font-semibold text-cyan-400 bg-cyan-950/20">Shipyard Appliance</th>
+                  <th className="p-4 font-semibold text-zinc-400">Heroku / AWS</th>
+                  <th className="p-4 font-semibold text-zinc-400">Kubernetes / Helm</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">Initial Setup Time</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">60 Seconds</td>
-                  <td className="p-4 text-zinc-400">Hours (IAM setup)</td>
+                  <td className="p-4 font-medium text-white">Setup Time</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">60 Seconds</td>
+                  <td className="p-4 text-zinc-400">Hours (Complex IAM)</td>
                   <td className="p-4 text-zinc-500">Days / Weeks</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">Kernel Hardware Telemetry</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">100% Real (0 Mock)</td>
-                  <td className="p-4 text-zinc-400">Paid CloudWatch</td>
-                  <td className="p-4 text-zinc-400">Heavy Prometheus</td>
+                  <td className="p-4 font-medium text-white">Zero Mock Telemetry</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">Real Kernel Metrics</td>
+                  <td className="p-4 text-zinc-400">Add-on Pricing</td>
+                  <td className="p-4 text-zinc-400">Prometheus / Grafana</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">In-Browser File Editor</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">Built-in (Instant)</td>
+                  <td className="p-4 font-medium text-white">In-Browser File Studio</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">Built-in (Instant)</td>
                   <td className="p-4 text-zinc-500">None</td>
                   <td className="p-4 text-zinc-500">None</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">Multi-Server Clustering</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">1 Token Command</td>
+                  <td className="p-4 font-medium text-white">Multi-Node Worker Join</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">1 Token Command</td>
                   <td className="p-4 text-zinc-400">VPC Peering</td>
                   <td className="p-4 text-zinc-500">Complex Kubeadm</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">Vercel &amp; VPS Dual Mode</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">Yes (Unified Repo)</td>
+                  <td className="p-4 font-medium text-white">Vercel &amp; VPS Dual Mode</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">Yes (Unified Repo)</td>
                   <td className="p-4 text-zinc-500">No</td>
                   <td className="p-4 text-zinc-500">No</td>
                 </tr>
                 <tr>
-                  <td className="p-4 font-sans font-medium text-white">Monthly Base Cost</td>
-                  <td className="p-4 text-emerald-400 font-bold bg-cyan-950/10">$0 (Your VPS only)</td>
+                  <td className="p-4 font-medium text-white">Monthly Platform Cost</td>
+                  <td className="p-4 text-emerald-400 font-semibold bg-cyan-950/10">$0 (Your VPS only)</td>
                   <td className="p-4 text-zinc-400">$25 - $200+</td>
-                  <td className="p-4 text-zinc-400">$70+ (Control plane)</td>
+                  <td className="p-4 text-zinc-400">$70+ (Control Plane)</td>
                 </tr>
               </tbody>
             </table>
@@ -807,49 +669,49 @@ export function LandingView() {
         </div>
       </section>
 
-      {/* Technical FAQ Accordion */}
-      <section className="px-6 max-w-4xl mx-auto pb-32">
-        <div className="text-center mb-14 space-y-2">
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight uppercase font-display">
-            Technical FAQ
+      {/* Frequently Asked Questions */}
+      <section className="px-6 max-w-4xl mx-auto pb-28">
+        <div className="text-center mb-12 space-y-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+            Frequently Asked Questions
           </h2>
-          <p className="text-xs sm:text-sm text-zinc-400 font-mono">
-            Got questions about how Shipyard runs in production?
+          <p className="text-xs sm:text-sm text-zinc-400">
+            Common questions about deploying and running Shipyard.
           </p>
         </div>
 
-        <div className="space-y-3 font-mono text-xs">
+        <div className="space-y-3 text-xs">
           {[
             {
-              q: "How does the dual-operating mode work in a single repository?",
-              a: "When deployed on Vercel, the environment variable VERCEL=1 is automatically detected, causing Shipyard to build and serve the official public marketing showcase, documentation site, and dynamic bash installer scripts. When installed on a Linux VPS via install.sh, the environment variable SHIPYARD_MODE=appliance activates the full PaaS control plane, Docker runner daemon, in-browser file editor, and database engine.",
+              q: "Can I host this on Vercel and also run on my VPS?",
+              a: "Yes! Shipyard is built with a dual-operating mode architecture in a single unified repository. When deployed on Vercel, it acts as the official public showcase, documentation site, and dynamic script distributor. When installed on any Linux VPS, it unlocks the full PaaS control plane, Docker runner orchestration, in-browser file editor, and database engine.",
             },
             {
-              q: "Does Shipyard require Kubernetes or heavy memory?",
-              a: "No. Shipyard intentionally avoids Kubernetes. It runs on a lightweight Node.js supervisor directly interfacing with Docker Engine and Caddy 2, consuming less than 140 MB of idle RAM. It runs effortlessly on any $5/month Linux VPS.",
+              q: "Does Shipyard require Kubernetes or heavy background processes?",
+              a: "No. Shipyard is deliberately designed without Kubernetes overhead. It runs directly on Docker and a resilient lightweight Node.js supervisor, using less than 150 MB of idle RAM. It runs effortlessly on a $5/month VPS.",
             },
             {
               q: "How does the Git Push Auto-Deployment work?",
-              a: "Shipyard generates an authenticated webhook endpoint for your repository. When you push to GitHub or GitLab, Shipyard verifies the webhook signature, clones the branch into an isolated container sandbox, detects the project type (Dockerfile, Node, Python, Static), runs tests and migrations, and shifts reverse proxy traffic with zero downtime.",
+              a: "Shipyard generates a secure webhook endpoint for each project. Whenever you push code to GitHub or GitLab, the webhook receives the commit, clones the branch, builds the container in an isolated sandbox, runs health checks, and shifts traffic with zero downtime.",
             },
             {
-              q: "Can I host plain HTML, CSS, and JS files without Git?",
-              a: "Yes! Shipyard features a built-in in-browser file editor and asset uploader. You can drag and drop static HTML/CSS/JS files or edit code in real time in the dashboard and hit 'Save & Redeploy' to update your site in under a second.",
+              q: "Can I host plain HTML, CSS, and JavaScript files?",
+              a: "Absolutely. You can drag and drop static website files or use Shipyard's built-in in-browser file editor to create, edit, and preview files with instant 1-click live redeployment.",
             },
             {
               q: "How do custom domains and SSL certificates work?",
-              a: "Shipyard dynamically assigns collision-free internal ports (30000-39999) to every workload and registers them with Caddy. When you add a custom domain (e.g., app.yourdomain.com), Caddy automatically provisions and renews Let's Encrypt TLS certificates without certbot.",
+              a: "Shipyard integrates directly with the Caddy web server. When you add a custom domain to any workload, Caddy automatically acquires and renews Let's Encrypt TLS certificates without any manual certbot intervention.",
             },
           ].map((item, idx) => (
             <div
               key={idx}
-              className="border border-zinc-800 rounded-xl bg-[#090d14] overflow-hidden transition-colors"
+              className="border border-zinc-800 rounded-xl bg-zinc-950 overflow-hidden transition-colors"
             >
               <button
                 onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
                 className="w-full p-4 text-left flex items-center justify-between text-zinc-200 hover:text-white transition-colors"
               >
-                <span className="font-sans font-bold text-sm text-zinc-100">{item.q}</span>
+                <span className="font-semibold text-sm text-zinc-100">{item.q}</span>
                 <ChevronDown
                   className={`w-4 h-4 text-zinc-400 transition-transform ${
                     openFaq === idx ? "transform rotate-180 text-cyan-400" : ""
@@ -857,7 +719,7 @@ export function LandingView() {
                 />
               </button>
               {openFaq === idx && (
-                <div className="px-4 pb-4 text-zinc-300 font-sans text-xs leading-relaxed border-t border-zinc-900 pt-3">
+                <div className="px-4 pb-4 text-zinc-400 text-xs leading-relaxed border-t border-zinc-900 pt-3">
                   {item.a}
                 </div>
               )}
@@ -867,69 +729,60 @@ export function LandingView() {
       </section>
 
       {/* CTA Section */}
-      <section className="px-6 max-w-5xl mx-auto pb-32 relative z-10">
-        <div className="relative overflow-hidden rounded-2xl border border-cyan-500/40 bg-gradient-to-b from-[#09101b] via-[#05080e] to-[#050608] p-8 sm:p-14 text-center space-y-6 shadow-[0_0_60px_rgba(0,240,255,0.1)]">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800 text-cyan-300 text-xs font-mono">
-            <Anchor className="w-3.5 h-3.5" />
-            <span>READY FOR IMMEDIATE DEPLOYMENT</span>
-          </div>
-
-          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight uppercase font-display">
-            Take Control of Your Infrastructure.
+      <section className="px-6 max-w-5xl mx-auto pb-28">
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950 p-8 sm:p-12 text-center space-y-6 shadow-2xl">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+            Ready to Take Control of Your Infrastructure?
           </h2>
-
-          <p className="text-sm text-zinc-300 max-w-lg mx-auto">
-            Install the Shipyard appliance on your VPS right now with one command, or explore the documentation.
+          <p className="text-sm text-zinc-400 max-w-xl mx-auto">
+            Spin up Shipyard on your VPS right now with one command, or explore our documentation to learn about multi-node clustering.
           </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <button
               onClick={handleCopy}
-              className="px-6 py-3.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_30px_rgba(0,240,255,0.35)] hover:scale-[1.02] font-mono tracking-wider"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
             >
               {copied ? (
                 <>
                   <Check className="w-4 h-4 text-zinc-950" />
-                  <span>COMMAND COPIED TO CLIPBOARD</span>
+                  <span>Command Copied to Clipboard</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-4 h-4 text-zinc-950" />
-                  <span>COPY 1-LINE INSTALL COMMAND</span>
+                  <span>Copy 1-Line VPS Install Command</span>
                 </>
               )}
             </button>
             <Link
               href="/docs"
-              className="px-6 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold text-xs transition-colors border border-zinc-700 font-mono tracking-wider"
+              className="w-full sm:w-auto px-6 py-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-medium text-xs transition-colors border border-zinc-700 text-center"
             >
-              EXPLORE ARCHITECTURE DOCS &rarr;
+              Read Full Documentation
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Industrial Footer */}
-      <footer className="border-t border-zinc-800/80 py-12 px-6 text-xs text-zinc-500 font-mono bg-[#030406]">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded border border-cyan-500/30 bg-cyan-950/20 flex items-center justify-center text-cyan-400">
-              <Anchor className="w-4 h-4" />
+      {/* Footer */}
+      <footer className="border-t border-zinc-800/80 py-10 px-6 text-center text-xs text-zinc-500 bg-[#070709]">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
+              <Anchor className="w-3.5 h-3.5" />
             </div>
-            <div>
-              <span className="text-zinc-200 font-black tracking-widest">SHIPYARD</span>
-              <span className="text-zinc-600 mx-2">//</span>
-              <span>ZERO-CONFIG DEVELOPER PLATFORM</span>
-            </div>
+            <span className="text-zinc-200 font-semibold">SHIPYARD</span>
+            <span className="text-zinc-600">•</span>
+            <span>Zero-Config Developer Platform</span>
           </div>
-          <div className="flex items-center gap-6 text-zinc-400">
-            <Link href="/docs" className="hover:text-cyan-300 transition-colors">
-              Docs
+          <div className="flex items-center gap-6">
+            <Link href="/docs" className="hover:text-zinc-300 transition-colors">
+              Documentation
             </Link>
-            <Link href="/docs#quickstart" className="hover:text-cyan-300 transition-colors">
-              Installer Script
+            <Link href="/docs#quickstart" className="hover:text-zinc-300 transition-colors">
+              Install Script
             </Link>
-            <Link href="/login" className="hover:text-cyan-300 transition-colors">
+            <Link href="/login" className="hover:text-zinc-300 transition-colors">
               Control Plane Sign In
             </Link>
           </div>
