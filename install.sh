@@ -243,19 +243,27 @@ echo ""
 
 cd "${INSTALL_SOURCE}"
 
-# Build the image from source (no reliance on any external registry)
-$SUDO docker compose --env-file .env build --no-cache shipyard-app
+# Build the Docker image from source.
+# Use --no-cache only on first install (no existing image), use cache on updates.
+if $SUDO docker image inspect shipyard-app:latest &>/dev/null 2>&1; then
+    echo -e "  Existing image found — rebuilding with layer cache (faster update)..."
+    $SUDO docker compose --env-file .env build shipyard-app
+else
+    echo -e "  First install — performing full image build (this takes 3-8 minutes)..."
+    $SUDO docker compose --env-file .env build --no-cache shipyard-app
+fi
 
-# Start all services
+# Start all services (detached)
 $SUDO docker compose --env-file .env up -d
 
-# Wait for the app to be healthy
-echo -e "${BLUE}  Waiting for Shipyard to be ready...${NC}"
+# Wait for the app to respond on /api/health
+echo -e "${BLUE}  Waiting for Shipyard to be ready (up to 90s)...${NC}"
 MAX_WAIT=90
 WAIT_COUNT=0
-while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if $SUDO docker compose --env-file .env exec -T shipyard-app \
-        wget --quiet --tries=1 --spider http://localhost:3000/api/health 2>/dev/null; then
+until [ $WAIT_COUNT -ge $MAX_WAIT ]; do
+    STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${SHIPYARD_PORT}/api/health 2>/dev/null || echo 000)
+    if [ "$STATUS" = "200" ]; then
+        echo -e "${GREEN}  ✓ Shipyard is responding (HTTP 200).${NC}"
         break
     fi
     WAIT_COUNT=$((WAIT_COUNT + 3))
