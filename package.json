@@ -5,7 +5,7 @@
   "description": "Zero-configuration self-hosted developer deployment appliance",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/safe-build.js",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
