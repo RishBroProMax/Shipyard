@@ -79,6 +79,11 @@ Worker nodes report real-time telemetry (CPU %, RAM %, Disk %, and In/Out Networ
 - **Python (FastAPI / Flask / Django)**: Detected via `requirements.txt` or `pyproject.toml` with Gunicorn / Uvicorn.
 - **Static Sites**: Detected via `index.html` with Nginx Alpine container.
 
+### 📝 In-Browser File Editor & Direct HTML/CSS/JS Hosting
+- Upload or create HTML, CSS, JavaScript, JSON, or configuration files directly in the dashboard.
+- Built-in syntax-highlighted code editor with line numbers, status indicators, and keyboard shortcuts.
+- Instant **"Save & Redeploy"** triggers live zero-downtime container compilation and reverse proxy updates.
+
 ### 🌐 Custom Domains & Automated SSL
 - Map custom domains (e.g. `api.yourdomain.com`).
 - Dynamic reverse proxy automatically routes incoming traffic to the container's dynamically allocated internal port (30000-39999).
