@@ -1,122 +1,165 @@
-# ⚓ Shipyard
+# ⚓ Shipyard — Self-Hosted Developer Platform & PaaS Appliance
 
-> **Production-Quality Zero-Configuration Self-Hosted Developer Platform (PaaS Appliance)**
+<p align="center">
+  <strong>Transform any fresh Linux VPS into a self-contained deployment platform in 60 seconds.</strong>
+  <br />
+  Zero configuration · Automatic SSL · Real hardware telemetry · One-command install
+</p>
 
-Shipyard is a self-contained, developer-focused PaaS that behaves like a complete appliance. Deploy it on any VPS or server, and it automatically provisions and manages all required internal services—including PostgreSQL, Redis, job queues, reverse proxy, background workers, and deployment agents—with **zero configuration after deployment**.
+<p align="center">
+  <a href="https://shipyard-paas.vercel.app">Live Demo</a>
+  ·
+  <a href="https://shipyard-paas.vercel.app/docs">Documentation</a>
+  ·
+  <a href="#-quick-start">Quick Start</a>
+</p>
 
 ---
 
-## 🚀 One-Line Installation (Appliance Mode)
+## ✨ What is Shipyard?
 
-On a fresh Linux VPS (Ubuntu, Debian, CentOS, Rocky Linux):
+Shipyard is a **self-hosted PaaS appliance** that runs on any fresh Linux VPS. It operates as a dual-mode system from a single repository:
+
+| Mode | Where | What it does |
+|------|-------|-------------|
+| **Cloud (Vercel)** | `VERCEL=1` | Serves the public landing page, docs, and install script endpoints |
+| **Appliance (VPS)** | `SHIPYARD_MODE=appliance` | Full PaaS control plane: Docker orchestration, Git deployments, SSL, real telemetry |
+
+---
+
+## 🚀 Quick Start
+
+### Deploy to VPS (Self-Hosted Appliance)
+
+Run this single command on any fresh Ubuntu/Debian/CentOS VPS:
 
 ```bash
 curl -fsSL https://shipyard.example/install.sh | sh
 ```
 
-Or run directly from this repository:
-
+**With custom options:**
 ```bash
-bash install.sh
+curl -fsSL https://shipyard.example/install.sh | sh -s -- \
+  --email admin@mycompany.com \
+  --password MySecurePassword123 \
+  --port 3000
 ```
 
-### The Zero-Configuration Guarantee:
-- **No manual database setup**: PostgreSQL 16 is created and configured automatically.
-- **No manual Redis setup**: Redis 7 and background workers initialize on first boot.
-- **No manual migrations**: Database schema and initial seeds apply automatically.
-- **No manual secret generation**: Cryptographic 256-bit secrets (AES-256-GCM master key, JWT secret, DB passwords, agent tokens) are generated on first startup and persisted in `/var/lib/shipyard/data/secrets/shipyard.secret.json`.
-- **Only 2 optional environment variables**:
-  - `SHIPYARD_ADMIN_EMAIL` (default: `admin@shipyard.local`)
-  - `SHIPYARD_ADMIN_PASSWORD` (auto-generated if omitted)
+That's it. Shipyard will:
+1. Install Docker (if not present)
+2. Clone the source from GitHub
+3. Generate unique secrets and a Postgres password
+4. Build and start the full stack (PostgreSQL 16, Redis 7, Caddy, Next.js)
+5. Bootstrap the admin account
+6. Print your dashboard URL and credentials
+
+**Minimum requirements:** 1 vCPU · 512MB RAM · Ubuntu 20.04+ / Debian 11+ / CentOS 8+
 
 ---
 
-## 🖥️ Connect Remote Worker Nodes
+### Deploy to Vercel (Public Showcase / Docs)
 
-Shipyard uses a **Control Plane (Leader) + Deployment Agent (Worker Node)** architecture. You can connect any other VPS, bare-metal server, or PC to join the cluster.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/RishBroProMax/Shipyard)
 
-### 1. Linux One-Liner (cURL)
-From the Shipyard dashboard &rarr; **Servers** page, copy your node command:
-
-```bash
-curl -fsSL http://<LEADER_HOST>:3000/agent_install | bash -s -- --token <AGENT_TOKEN> --name "worker-vps-01"
-```
-
-### 2. Docker Container
-```bash
-docker run -d \
-  --name shipyard-agent \
-  --restart always \
-  --net host \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -e SHIPYARD_LEADER_URL=http://<LEADER_HOST>:3000 \
-  -e SHIPYARD_AGENT_TOKEN=<AGENT_TOKEN> \
-  -e SHIPYARD_NODE_NAME="worker-vps-01" \
-  node:20-alpine sh -c "curl -fsSL http://<LEADER_HOST>:3000/agent_install | bash -s -- --token <AGENT_TOKEN>"
-```
-
-### 3. Standalone Node.js Runner
-```bash
-curl -fsSL http://<LEADER_HOST>:3000/api/agent/script -o shipyard-agent.js
-node shipyard-agent.js --leader http://<LEADER_HOST>:3000 --token <AGENT_TOKEN> --name "my-pc"
-```
-
-Worker nodes report real-time telemetry (CPU %, RAM %, Disk %, and In/Out Network throughput in KB/s & MB/s) every 3 seconds and execute container builds inside isolated Docker sandboxes.
+No environment variables needed — Vercel auto-detects `VERCEL=1` and serves only the landing page and docs.
 
 ---
 
-## ⚡ Key PaaS Features
-
-### 🔄 Git Push Auto-Deploy
-1. Create a project with your GitHub repository URL and branch (e.g. `main`).
-2. Add the Webhook URL to GitHub: `http://<LEADER_HOST>:3000/api/webhooks/github`
-3. Every `git push` automatically triggers:
-   `Webhook -> Buildpack Detection -> Docker Build -> Dynamic Port Allocation -> Container Start -> Health Check -> Reverse Proxy -> Live URL`.
-
-### 📦 Automatic Buildpack Detection
-- **Dockerfile**: Native multi-stage Docker build.
-- **Node.js / Next.js**: Detected via `package.json` with optimized production standalone build.
-- **Python (FastAPI / Flask / Django)**: Detected via `requirements.txt` or `pyproject.toml` with Gunicorn / Uvicorn.
-- **Static Sites**: Detected via `index.html` with Nginx Alpine container.
-
-### 📝 In-Browser File Editor & Direct HTML/CSS/JS Hosting
-- Upload or create HTML, CSS, JavaScript, JSON, or configuration files directly in the dashboard.
-- Built-in syntax-highlighted code editor with line numbers, status indicators, and keyboard shortcuts.
-- Instant **"Save & Redeploy"** triggers live zero-downtime container compilation and reverse proxy updates.
-
-### 🌐 Custom Domains & Automated SSL
-- Map custom domains (e.g. `api.yourdomain.com`).
-- Dynamic reverse proxy automatically routes incoming traffic to the container's dynamically allocated internal port (30000-39999).
-- Automatic Let's Encrypt SSL/TLS certificates.
-
-### 🔐 Zero-Trust Security & AES-256 Vault
-- Untrusted repository code builds exclusively on worker nodes—never in the main control plane.
-- Project environment variables are encrypted at rest using AES-256-GCM.
-- GitHub webhooks verified via HMAC SHA-256 signatures.
-- Granular team user management (Admin, Operator, Viewer roles).
-- Complete audit activity logging (`ActivityLog`) tracking all user and system events.
-
-### 📜 Real-Time Live Logs & 1-Click Rollback
-- Real-time Server-Sent Events (SSE) log streaming with terminal styling and color highlights.
-- Instant 1-click rollback to any previous commit or deployment.
-
----
-
-## 🛠️ Local Development & Standalone Run
+## 🔧 Development Setup
 
 ```bash
-# Clone repository
-git clone https://github.com/your-org/shipyard.git
-cd shipyard
+git clone https://github.com/RishBroProMax/Shipyard.git
+cd Shipyard
+npm install
 
-# Install dependencies
-npm install --ignore-scripts
+# Start in local appliance mode
+cp .env.example .env
+# Edit .env: set SHIPYARD_MODE=appliance and DATABASE_URL
 
-# Run supervisor verification tests
-node scripts/test-supervisor.js
-
-# Start Next.js development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` to access the dashboard.
+---
+
+## 🏗️ Architecture
+
+```
+Shipyard Repository (Single Source of Truth)
+├── Vercel Deployment     → Landing page + Docs + Install script server
+│   └── VERCEL=1         → Shows LandingView + DocsPage only
+│
+└── VPS Appliance         → Full self-hosted PaaS control plane
+    ├── install.sh        → Bootstraps Docker stack from source
+    ├── docker-compose.yml → PostgreSQL + Redis + Caddy + Next.js
+    └── SHIPYARD_MODE=appliance → Unlocks full dashboard
+```
+
+**Stack:**
+- **Frontend / API:** Next.js 14 (App Router)
+- **Database:** PostgreSQL 16 via Prisma ORM (+ JSON flat-file fallback)
+- **Cache / Pub-Sub:** Redis 7
+- **Reverse Proxy / SSL:** Caddy 2 (auto Let's Encrypt)
+- **Container Runtime:** Docker Engine
+- **Worker Agents:** Node.js agent (zero external dependencies)
+
+---
+
+## 🌐 Adding Worker Nodes
+
+Connect additional servers to your Shipyard cluster:
+
+```bash
+# On the remote VPS you want to add as a worker:
+curl -fsSL http://YOUR_LEADER_IP:3000/agent_install | sh -s -- \
+  --token <CLUSTER_TOKEN_FROM_DASHBOARD>
+```
+
+The agent streams real-time CPU, RAM, disk, and network telemetry back to the leader every 3 seconds.
+
+---
+
+## 📦 Project Structure
+
+```
+Shipyard/
+├── src/
+│   ├── app/
+│   │   ├── install.sh/      # Dynamic install script endpoint
+│   │   ├── agent_install/   # Dynamic agent installer endpoint
+│   │   ├── api/             # REST API (auth, projects, deployments, servers)
+│   │   ├── docs/            # Documentation page
+│   │   └── landing/         # Public landing page
+│   ├── agent/
+│   │   └── shipyard-agent.js  # Worker node agent (zero dependencies)
+│   ├── lib/
+│   │   ├── db.ts            # JSON flat-file database (VPS mode)
+│   │   ├── init/            # Appliance boot supervisor
+│   │   ├── security/        # JWT, AES-256, bcrypt
+│   │   ├── proxy/           # Caddy config generator
+│   │   └── system/          # Host telemetry (Linux /proc/)
+│   └── components/          # React UI components
+├── scripts/
+│   ├── safe-build.js        # Vercel-safe build pipeline
+│   └── agent-install.sh     # Worker node install script
+├── install.sh               # Main VPS installer
+├── Dockerfile               # Multi-stage production Docker build
+├── docker-compose.yml       # Full production stack
+└── .env.example             # Environment variable reference
+```
+
+---
+
+## 🔐 Security
+
+- **AES-256-GCM** encryption for all stored environment variables
+- **bcrypt** password hashing (cost factor 12)
+- **JWT** session tokens (configurable expiry)
+- Auto-generated unique Postgres password per installation
+- Secrets stored at `$SHIPYARD_DATA_DIR/data/secrets/shipyard.secret.json` (mode 0600)
+- Docker socket access is scoped to the control plane container only
+
+---
+
+## 📝 License
+
+MIT — Built by [@RishBroProMax](https://github.com/RishBroProMax)
