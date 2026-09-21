@@ -1,0 +1,76 @@
+version: "3.8"
+
+services:
+  shipyard-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shipyard-app
+    restart: unless-stopped
+    ports:
+      - "${SHIPYARD_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - SHIPYARD_ADMIN_EMAIL=${SHIPYARD_ADMIN_EMAIL:-admin@shipyard.local}
+      - SHIPYARD_ADMIN_PASSWORD=${SHIPYARD_ADMIN_PASSWORD:-}
+      - SHIPYARD_DATA_DIR=/var/lib/shipyard/data
+      - DATABASE_URL=postgresql://shipyard:secret@shipyard-db:5432/shipyard
+      - REDIS_URL=redis://shipyard-redis:6379
+    volumes:
+      - shipyard-data:/var/lib/shipyard/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - shipyard-db
+      - shipyard-redis
+    networks:
+      - shipyard-net
+
+  shipyard-db:
+    image: postgres:16-alpine
+    container_name: shipyard-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=shipyard
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=shipyard
+    volumes:
+      - shipyard-pgdata:/var/lib/postgresql/data
+    networks:
+      - shipyard-net
+
+  shipyard-redis:
+    image: redis:7-alpine
+    container_name: shipyard-redis
+    restart: unless-stopped
+    volumes:
+      - shipyard-redisdata:/data
+    networks:
+      - shipyard-net
+
+  shipyard-proxy:
+    image: caddy:2-alpine
+    container_name: shipyard-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - shipyard-data:/var/lib/shipyard/data
+      - shipyard-caddy:/data
+    networks:
+      - shipyard-net
+
+volumes:
+  shipyard-data:
+    name: shipyard-data
+  shipyard-pgdata:
+    name: shipyard-pgdata
+  shipyard-redisdata:
+    name: shipyard-redisdata
+  shipyard-caddy:
+    name: shipyard-caddy
+
+networks:
+  shipyard-net:
+    name: shipyard-net
+    driver: bridge

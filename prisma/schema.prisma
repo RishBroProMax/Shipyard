@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         String        @default("ADMIN")
+  name         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     Session[]
+  activityLogs ActivityLog[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model Server {
+  id              String       @id @default(uuid())
+  name            String
+  host            String       @default("localhost")
+  token           String       @unique
+  status          String       @default("ONLINE")
+  isLocalHost     Boolean      @default(true)
+  agentVersion    String       @default("1.0.0")
+  cpuCores        Int          @default(4)
+  cpuUsage        Float        @default(0.0)
+  memoryTotal     BigInt       @default(8589934592)
+  memoryUsage     Float        @default(0.0)
+  diskTotal       BigInt       @default(107374182400)
+  diskUsage       Float        @default(0.0)
+  dockerVersion   String       @default("27.0.0")
+  containerCount  Int          @default(0)
+  lastHeartbeatAt DateTime     @default(now())
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  projects        Project[]
+  deployments     Deployment[]
+}
+
+model Project {
+  id             String       @id @default(uuid())
+  name           String
+  slug           String       @unique
+  repoUrl        String
+  branch         String       @default("main")
+  appType        String       @default("AUTO")
+  rootDir        String       @default("/")
+  dockerfilePath String?
+  buildCommand   String?
+  runCommand     String?
+  targetPort     Int          @default(3000)
+  allocatedPort  Int?
+  liveUrl        String?
+  status         String       @default("IDLE")
+  autoDeploy     Boolean      @default(true)
+  envVars        String?
+  serverId       String?
+  server         Server?      @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deployments    Deployment[]
+  domains        Domain[]
+}
+
+model Deployment {
+  id            String    @id @default(uuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  serverId      String?
+  server        Server?   @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  status        String    @default("QUEUED")
+  trigger       String    @default("MANUAL")
+  commitHash    String?
+  commitMessage String?
+  commitAuthor  String?
+  branch        String    @default("main")
+  containerId   String?
+  allocatedPort Int?
+  liveUrl       String?
+  durationMs    Int       @default(0)
+  buildLogs     String?
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Domain {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain    String   @unique
+  sslStatus String   @default("PENDING")
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  isSecret  Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
