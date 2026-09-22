@@ -3,23 +3,22 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "./lib/security/auth-constants";
 
 export function middleware(request: NextRequest) {
-  const isPublicMode =
-    process.env.VERCEL === "1" ||
-    process.env.SHIPYARD_MODE === "public" ||
-    process.env.NEXT_PUBLIC_SHIPYARD_MODE === "public";
-
-  // Public mode allows public showcase and documentation
-  if (isPublicMode) {
-    return NextResponse.next();
-  }
-
   const { pathname } = request.nextUrl;
+
+  // Immediate redirect for deprecated public landing and docs routes
+  if (
+    pathname === "/landing" ||
+    pathname.startsWith("/landing/") ||
+    pathname === "/docs" ||
+    pathname.startsWith("/docs/")
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
 
   // Paths exempt from session check
   if (
     pathname.startsWith("/login") ||
     pathname.startsWith("/api") ||
-    pathname.startsWith("/docs") ||
     pathname.startsWith("/install.sh") ||
     pathname.startsWith("/agent_install") ||
     pathname.startsWith("/_next") ||

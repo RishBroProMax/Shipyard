@@ -11,7 +11,6 @@ import {
   Settings,
   LogOut,
   Anchor,
-  BookOpen,
   X,
   ShieldCheck,
 } from "lucide-react";
@@ -39,7 +38,6 @@ export function Sidebar({
     { label: "Servers", href: "/servers", icon: Server },
     { label: "Activity", href: "/activity", icon: Activity },
     { label: "Settings", href: "/settings", icon: Settings },
-    { label: "Documentation", href: "/docs", icon: BookOpen },
   ];
 
   const handleLogout = async () => {

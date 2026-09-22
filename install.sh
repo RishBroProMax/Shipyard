@@ -3,10 +3,10 @@
 # ⚓ Shipyard PaaS — Next-Gen Self-Hosted Developer Appliance Installer
 #
 # Interactive usage (guided terminal prompt for email & admin password):
-#   curl -fsSL https://shipyard.example/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
 #
 # Headless / Scripted usage (CI/CD, cloud-init, Ansible):
-#   curl -fsSL https://shipyard.example/install.sh | bash -s -- \
+#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash -s -- \
 #     --email admin@mycompany.com \
 #     --password "mySecurePassword" \
 #     --port 3000 \

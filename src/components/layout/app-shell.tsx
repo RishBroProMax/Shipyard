@@ -23,13 +23,7 @@ export function AppShell({ children, title }: AppShellProps) {
     fetch("/api/auth/me")
       .then((res) => {
         if (res.status === 401) {
-          const isShowcase =
-            typeof window !== "undefined" &&
-            (window.location.hostname.includes("vercel.app") ||
-              process.env.NEXT_PUBLIC_SHIPYARD_MODE === "public");
-          if (!isShowcase) {
-            window.location.href = "/login";
-          }
+          window.location.href = "/login";
           return null;
         }
         return res.json();
@@ -77,25 +71,7 @@ export function AppShell({ children, title }: AppShellProps) {
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
-        {typeof window !== "undefined" &&
-          (window.location.hostname.includes("vercel.app") ||
-            process.env.NEXT_PUBLIC_SHIPYARD_MODE === "public") && (
-            <div className="bg-gradient-to-r from-zinc-900 via-zinc-850 to-zinc-900 border-b border-zinc-800 px-4 py-2 text-xs font-mono flex items-center justify-between text-zinc-300">
-              <div className="flex items-center gap-2 truncate">
-                <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-                <span className="font-semibold text-white">Vercel Cloud Showcase:</span>
-                <span className="text-zinc-400 truncate">
-                  To manage real Docker workloads & private vaults, install the appliance on your VPS.
-                </span>
-              </div>
-              <a
-                href="/docs#self-hosting"
-                className="text-cyan-400 hover:text-cyan-300 font-semibold underline shrink-0 ml-4"
-              >
-                VPS Installer &rarr;
-              </a>
-            </div>
-          )}
+
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#09090b]">
           <div className="max-w-7xl mx-auto">{children}</div>

@@ -132,12 +132,14 @@ cmd_update() {
     $SUDO docker compose --env-file "${ENV_FILE}" up -d --remove-orphans
 
     echo -e "\n${CYAN}▶ Verifying appliance health...${NC}"
+    PORT=$(grep '^SHIPYARD_PORT=' "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2 || echo "3000")
+    PORT=${PORT:-3000}
     sleep 3
     MAX_WAIT=60
     WAIT=0
     HEALTHY=false
     while [ $WAIT -lt $MAX_WAIT ]; do
-        STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health 2>/dev/null || echo 000)
+        STATUS=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:${PORT}/api/health" 2>/dev/null || echo 000)
         if [ "$STATUS" = "200" ]; then
             HEALTHY=true
             break
@@ -168,7 +170,9 @@ cmd_status() {
     echo ""
 
     echo -e "${BOLD}SYSTEM HEALTH:${NC}"
-    HEALTH_JSON=$(curl -s --max-time 3 http://localhost:3000/api/health 2>/dev/null || echo "")
+    PORT=$(grep '^SHIPYARD_PORT=' "${ENV_FILE}" 2>/dev/null | cut -d'=' -f2 || echo "3000")
+    PORT=${PORT:-3000}
+    HEALTH_JSON=$(curl -s --max-time 3 "http://localhost:${PORT}/api/health" 2>/dev/null || echo "")
     if [ -n "$HEALTH_JSON" ]; then
         echo -e "  Health Check:    ${GREEN}ONLINE (HTTP 200)${NC}"
         UPTIME=$(echo "$HEALTH_JSON" | grep -o '"uptimeSeconds":[0-9]*' | cut -d':' -f2 || echo "0")
@@ -178,7 +182,7 @@ cmd_status() {
     fi
 
     IP=$(curl -s --max-time 3 https://api.ipify.org 2>/dev/null || echo "YOUR_VPS_IP")
-    echo -e "  Dashboard URL:   ${CYAN}http://${IP}:3000${NC}\n"
+    echo -e "  Dashboard URL:   ${CYAN}http://${IP}:${PORT}${NC}\n"
 }
 
 # ── Command: logs ─────────────────────────────────────────────────────────────

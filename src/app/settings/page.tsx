@@ -422,6 +422,55 @@ export default function SettingsPage() {
             </Button>
           </Card>
 
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Terminal className="w-4 h-4 text-cyan-400" />
+              <h3 className="text-sm font-bold text-white">Appliance CLI & GitHub Operations</h3>
+            </div>
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Shipyard provides a global management binary installed on the host system. Run these commands via SSH on your VPS.
+            </p>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div className="p-3 bg-black/70 rounded-xl border border-zinc-800/80 space-y-1">
+                <div className="text-[11px] text-zinc-400 font-sans">GitHub 1-Line Installer:</div>
+                <div className="text-cyan-400 select-all">
+                  curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/60">
+                  <div className="text-emerald-400 font-bold mb-0.5">$ shipyard update</div>
+                  <div className="text-[11px] text-zinc-400 font-sans">
+                    Pulls latest code from GitHub &amp; rebuilds with ZERO data loss.
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/60">
+                  <div className="text-cyan-400 font-bold mb-0.5">$ shipyard status</div>
+                  <div className="text-[11px] text-zinc-400 font-sans">
+                    View real-time hardware telemetry and container health.
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/60">
+                  <div className="text-amber-400 font-bold mb-0.5">$ shipyard logs [service]</div>
+                  <div className="text-[11px] text-zinc-400 font-sans">
+                    Stream live logs for app, proxy, db, or redis.
+                  </div>
+                </div>
+
+                <div className="p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/60">
+                  <div className="text-blue-400 font-bold mb-0.5">$ shipyard restart</div>
+                  <div className="text-[11px] text-zinc-400 font-sans">
+                    Gracefully restarts all PaaS containers and proxy routes.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
           <Card className="p-6 font-mono text-xs text-zinc-400 space-y-2.5">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">
               System Environment & Runtime

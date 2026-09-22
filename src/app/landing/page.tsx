@@ -1,5 +1,5 @@
-import { LandingView } from "@/components/public/landing-view";
+import { redirect } from "next/navigation";
 
 export default function LandingPage() {
-  return <LandingView />;
+  redirect("/");
 }
