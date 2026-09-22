@@ -44,9 +44,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const {
+    let {
       name,
       repoUrl,
+      template,
       branch = "main",
       appType = "AUTO",
       rootDir = "/",
@@ -56,9 +57,19 @@ export async function POST(req: NextRequest) {
       envVars = {},
     } = body;
 
+    if (template && !repoUrl) {
+      repoUrl = `template://${template}`;
+      const { STARTER_TEMPLATES } = await import("@/lib/templates");
+      const tmpl = STARTER_TEMPLATES[template];
+      if (tmpl) {
+        if (appType === "AUTO") appType = tmpl.appType;
+        if (!body.targetPort) targetPort = tmpl.targetPort;
+      }
+    }
+
     if (!name || !repoUrl) {
       return NextResponse.json(
-        { error: "Project name and Git repository URL are required" },
+        { error: "Project name and Git repository URL (or starter template) are required" },
         { status: 400 }
       );
     }
