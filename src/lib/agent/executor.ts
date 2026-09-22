@@ -269,9 +269,13 @@ export async function executeDeployment(
 
     if (project.envVars) {
       try {
-        const rawJson = decryptSecret(project.envVars, encryptionKey);
-        const parsed = JSON.parse(rawJson);
-        decryptedEnv = { ...decryptedEnv, ...parsed };
+        if (typeof project.envVars === "string") {
+          const rawJson = decryptSecret(project.envVars, encryptionKey);
+          const parsed = JSON.parse(rawJson);
+          decryptedEnv = { ...decryptedEnv, ...parsed };
+        } else if (typeof project.envVars === "object") {
+          decryptedEnv = { ...decryptedEnv, ...(project.envVars as Record<string, string>) };
+        }
       } catch (err) {
         appendLog(depId, `Note: Environment variables parsed with standard keys.`);
       }
