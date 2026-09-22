@@ -36,6 +36,20 @@ mkdir -p /var/lib/shipyard/data/backups
 chown -R 1001:1001 /var/lib/shipyard/data 2>/dev/null || true
 echo "[Shipyard] ✓ Data directories ready."
 
+# ── Configure Docker Socket Permissions ─────────────────────────────────────
+# If /var/run/docker.sock is mounted, ensure the 'shipyard' user has read/write
+# access to communicate with the host Docker daemon.
+if [ -S "/var/run/docker.sock" ]; then
+    echo "[Shipyard] Docker socket detected. Configuring permissions..."
+    chmod 666 /var/run/docker.sock 2>/dev/null || true
+    DOCKER_GID=$(stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
+    if [ -n "$DOCKER_GID" ] && [ "$DOCKER_GID" != "0" ]; then
+        addgroup -g "$DOCKER_GID" docker_host 2>/dev/null || true
+        addgroup shipyard docker_host 2>/dev/null || true
+    fi
+    echo "[Shipyard] ✓ Docker socket permissions configured for container orchestration."
+fi
+
 # ── Wait for PostgreSQL ───────────────────────────────────────────────────────
 if [ -n "$DATABASE_URL" ]; then
     echo "[Shipyard] Waiting for PostgreSQL..."
