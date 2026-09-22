@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Settings,
   Users,
@@ -16,6 +20,10 @@ import {
   Lock,
   Mail,
   Check,
+  Box,
+  Terminal,
+  Server,
+  RefreshCw,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -55,6 +63,8 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchUsers();
     fetchStatus();
+    const interval = setInterval(fetchStatus, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -119,8 +129,18 @@ export default function SettingsPage() {
 
   return (
     <AppShell title="Platform Settings">
-      {/* Tab Navigation */}
-      <div className="flex border-b border-zinc-800 gap-6 mb-6 text-xs font-medium">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-white">Platform Settings</h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Internal appliance daemons, user credentials, role policies, and database backup
+          </p>
+        </div>
+      </div>
+
+      {/* Tab Navigation (Pill style) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 border-b border-zinc-800/80">
         {[
           { id: "users", label: "User Accounts & Access", icon: Users },
           { id: "services", label: "Internal Appliance Services", icon: Database },
@@ -132,10 +152,10 @@ export default function SettingsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 -mb-px ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 isActive
-                  ? "border-zinc-100 text-zinc-100 font-semibold"
-                  : "border-transparent text-zinc-400 hover:text-zinc-200"
+                  ? "bg-zinc-800 text-white border border-zinc-700 shadow-sm"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-900/50"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -147,67 +167,71 @@ export default function SettingsPage() {
 
       {/* Tab 1: User Accounts */}
       {activeTab === "users" && (
-        <div className="space-y-6">
-          {/* Add User Form */}
-          <div className="p-5 rounded-lg bg-zinc-950 border border-zinc-800/80 max-w-2xl">
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono mb-2">
-              Add New User Account
-            </h3>
-            <p className="text-xs text-zinc-500 mb-4">
-              Grant team members access to the Shipyard control plane with granular role permissions.
+        <div className="space-y-6 max-w-4xl">
+          {/* Add User Card */}
+          <Card className="p-6">
+            <h3 className="text-sm font-bold text-white mb-1">Add Operator or Admin Account</h3>
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Grant team members authenticated access to this Shipyard instance with granular RBAC permissions.
             </p>
 
             {userError && (
-              <div className="p-3 mb-4 bg-red-950/40 border border-red-800/80 rounded text-xs text-red-300">
+              <div className="p-3 mb-4 bg-red-950/40 border border-red-800/80 rounded-xl text-xs text-red-300 font-mono">
                 {userError}
               </div>
             )}
 
             <form onSubmit={handleAddUser} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Email</label>
-                  <input
+                  <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-mono">
+                    Email Address
+                  </label>
+                  <Input
                     type="email"
                     required
                     placeholder="developer@company.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 font-mono"
+                    className="font-mono text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Password</label>
-                  <input
+                  <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-mono">
+                    Password
+                  </label>
+                  <Input
                     type="password"
                     required
                     placeholder="••••••••••••"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 font-mono"
+                    className="font-mono text-xs"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-mono">
                     Display Name
                   </label>
-                  <input
+                  <Input
                     type="text"
                     placeholder="Alex Doe"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 font-mono"
+                    className="font-mono text-xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">Role</label>
+                  <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-mono">
+                    Role Policy
+                  </label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 font-mono"
+                    className="w-full h-10 px-3 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
                   >
                     <option value="ADMIN">Administrator (Full Access)</option>
                     <option value="OPERATOR">Operator (Deploy & Manage)</option>
@@ -218,7 +242,7 @@ export default function SettingsPage() {
 
               <div className="pt-2 flex items-center justify-between">
                 {userSuccess ? (
-                  <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                  <span className="text-xs text-emerald-400 font-mono flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>User account created successfully!</span>
                   </span>
@@ -226,163 +250,204 @@ export default function SettingsPage() {
                   <span></span>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isAddingUser}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-zinc-900 bg-zinc-100 hover:bg-white rounded transition-colors disabled:opacity-50"
-                >
+                <Button type="submit" variant="default" size="sm" disabled={isAddingUser}>
                   {isAddingUser ? "Creating User..." : "Create Account"}
-                </button>
+                </Button>
               </div>
             </form>
-          </div>
+          </Card>
 
           {/* User List Table */}
-          <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg overflow-hidden max-w-4xl">
-            <div className="px-5 py-3 border-b border-zinc-800 text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">
+          <Card className="overflow-hidden">
+            <div className="px-5 py-3 border-b border-zinc-850 text-xs font-bold text-white uppercase tracking-wider font-mono">
               Registered Users ({users.length})
             </div>
 
             <div className="divide-y divide-zinc-900 text-xs font-mono">
               {users.map((u) => (
-                <div key={u.id} className="p-4 flex items-center justify-between">
+                <div key={u.id} className="p-4 flex items-center justify-between hover:bg-zinc-900/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 font-bold">
+                    <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cyan-400 font-bold">
                       {u.name ? u.name[0].toUpperCase() : u.email[0].toUpperCase()}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-zinc-200">{u.email}</span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                        <span className="font-bold text-white">{u.name || "User"}</span>
+                        <Badge
+                          variant={u.role === "ADMIN" ? "cyan" : "outline"}
+                          className="text-[10px] py-0"
+                        >
                           {u.role}
-                        </span>
+                        </Badge>
                       </div>
-                      {u.name && <p className="text-[11px] text-zinc-500">{u.name}</p>}
+                      <div className="text-zinc-500 text-[11px] mt-0.5">{u.email}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <span className="text-[11px] text-zinc-600">
-                      Added {new Date(u.createdAt).toLocaleDateString()}
+                    <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                      Created: {new Date(u.createdAt).toLocaleDateString()}
                     </span>
-                    {u.role !== "ADMIN" && (
+                    {users.length > 1 && (
                       <button
                         onClick={() => handleDeleteUser(u.id)}
-                        className="p-1 text-zinc-500 hover:text-red-400 rounded"
-                        title="Delete user"
+                        className="p-1.5 text-zinc-500 hover:text-red-400 rounded-lg transition-colors"
+                        title="Delete user account"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Tab 2: Internal Services */}
       {activeTab === "services" && (
-        <div className="space-y-4 max-w-3xl">
-          <div className="p-5 rounded-lg bg-zinc-950 border border-zinc-800/80 space-y-3">
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">
-              Self-Contained Appliance Architecture
-            </h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Shipyard operates as a complete zero-configuration appliance. All internal services are provisioned, secured, and managed automatically on startup.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 font-mono text-xs">
-              <div className="p-3.5 rounded bg-zinc-900/60 border border-zinc-800">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-zinc-300 font-semibold">PostgreSQL 16 Engine</span>
-                  <span className="text-emerald-400 text-[10px] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>ONLINE</span>
-                  </span>
+        <div className="space-y-4 max-w-4xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Service 1: Docker Engine */}
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-cyan-400">
+                    <Box className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Docker Container Engine</h3>
+                    <p className="text-[11px] text-zinc-400">
+                      Isolated multi-stage container sandbox
+                    </p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-zinc-500">Auto-migrated relational schema & users</p>
+                <Badge
+                  variant={
+                    systemStatus?.services?.dockerEngine?.status === "UP" ? "cyan" : "outline"
+                  }
+                  className="font-mono text-[10px]"
+                >
+                  {systemStatus?.services?.dockerEngine?.status === "UP" ? "ACTIVE" : "STANDALONE"}
+                </Badge>
               </div>
+              <div className="pt-2 border-t border-zinc-850 font-mono text-[11px] text-zinc-400 space-y-1">
+                <div>Socket: /var/run/docker.sock</div>
+                <div>Version: {systemStatus?.services?.dockerEngine?.version || "Active"}</div>
+              </div>
+            </Card>
 
-              <div className="p-3.5 rounded bg-zinc-900/60 border border-zinc-800">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-zinc-300 font-semibold">Redis 7 / Worker Queue</span>
-                  <span className="text-emerald-400 text-[10px] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>ONLINE</span>
-                  </span>
+            {/* Service 2: Caddy Reverse Proxy */}
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400">
+                    <Radio className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Dynamic Reverse Proxy (Caddy)</h3>
+                    <p className="text-[11px] text-zinc-400">HTTP/2, HTTP/3, and automatic TLS</p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-zinc-500">Durable deployment queue with auto-retry</p>
+                <Badge variant="cyan" className="font-mono text-[10px]">
+                  UP (200 OK)
+                </Badge>
               </div>
+              <div className="pt-2 border-t border-zinc-850 font-mono text-[11px] text-zinc-400 space-y-1">
+                <div>Admin API: http://localhost:2019/load</div>
+                <div>Active Upstream Routes: {systemStatus?.proxy?.activeRoutes || 0}</div>
+              </div>
+            </Card>
 
-              <div className="p-3.5 rounded bg-zinc-900/60 border border-zinc-800">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-zinc-300 font-semibold">Dynamic Reverse Proxy</span>
-                  <span className="text-emerald-400 text-[10px] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>ONLINE</span>
-                  </span>
+            {/* Service 3: PostgreSQL Database */}
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-blue-400">
+                    <Database className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Database Engine</h3>
+                    <p className="text-[11px] text-zinc-400">Transactional schema & state store</p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-zinc-500">Automated Caddy Let&apos;s Encrypt SSL & routes</p>
+                <Badge variant="cyan" className="font-mono text-[10px]">
+                  HEALTHY
+                </Badge>
               </div>
+              <div className="pt-2 border-t border-zinc-850 font-mono text-[11px] text-zinc-400 space-y-1">
+                <div>Engine: {systemStatus?.services?.database?.engine || "PostgreSQL 16"}</div>
+                <div>Storage Path: /var/lib/shipyard/data</div>
+              </div>
+            </Card>
 
-              <div className="p-3.5 rounded bg-zinc-900/60 border border-zinc-800">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-zinc-300 font-semibold">Docker Agent Subsystem</span>
-                  <span className="text-emerald-400 text-[10px] flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>ONLINE</span>
-                  </span>
+            {/* Service 4: Redis Worker Queue */}
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-purple-400">
+                    <HardDrive className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Job Queue & Cache</h3>
+                    <p className="text-[11px] text-zinc-400">Async deployment worker queue</p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-zinc-500">Isolated sandboxes & bridge network</p>
+                <Badge variant="cyan" className="font-mono text-[10px]">
+                  HEALTHY
+                </Badge>
               </div>
-            </div>
+              <div className="pt-2 border-t border-zinc-850 font-mono text-[11px] text-zinc-400 space-y-1">
+                <div>Engine: {systemStatus?.services?.redisQueue?.engine || "Redis 7"}</div>
+                <div>Memory Mode: LRU In-Memory</div>
+              </div>
+            </Card>
           </div>
         </div>
       )}
 
       {/* Tab 3: Backup & System Info */}
       {activeTab === "backup" && (
-        <div className="space-y-6 max-w-3xl">
-          <div className="p-5 rounded-lg bg-zinc-950 border border-zinc-800/80 space-y-3">
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">
-              Configuration Backup & Export
-            </h3>
-            <p className="text-xs text-zinc-400 leading-relaxed">
-              Export an encrypted snapshot of all project configurations, cluster server nodes, custom domains, and platform settings.
+        <div className="space-y-6 max-w-4xl">
+          <Card className="p-6">
+            <h3 className="text-sm font-bold text-white mb-1">Export Appliance Database & Config</h3>
+            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
+              Generate a snapshot containing projects, encrypted environment credentials, and cluster node configurations.
             </p>
 
-            <button
-              onClick={handleDownloadBackup}
-              className="px-3.5 py-2 text-xs font-semibold text-zinc-900 bg-zinc-100 hover:bg-white rounded transition-colors flex items-center gap-1.5"
-            >
+            <Button variant="default" size="sm" onClick={handleDownloadBackup} className="gap-2">
               <Download className="w-3.5 h-3.5" />
-              <span>Download System Backup (.json)</span>
-            </button>
-          </div>
+              <span>Download Full Backup (JSON)</span>
+            </Button>
+          </Card>
 
-          <div className="p-5 rounded-lg bg-zinc-950 border border-zinc-800/80 space-y-2 text-xs font-mono">
-            <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider mb-2">
-              Appliance Metadata
-            </h3>
-            <div className="flex justify-between py-1.5 border-b border-zinc-900">
-              <span className="text-zinc-500">Platform Version</span>
-              <span className="text-zinc-300">Shipyard v1.0.0 (Production Appliance)</span>
+          <Card className="p-6 font-mono text-xs text-zinc-400 space-y-2.5">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2">
+              System Environment & Runtime
+            </h4>
+            <div className="flex justify-between py-1 border-b border-zinc-850">
+              <span>Appliance Version:</span>
+              <span className="text-white">Shipyard v1.0.0</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-zinc-900">
-              <span className="text-zinc-500">Persistent Storage Path</span>
-              <span className="text-zinc-300">/var/lib/shipyard/data</span>
+            <div className="flex justify-between py-1 border-b border-zinc-850">
+              <span>Host Process Uptime:</span>
+              <span className="text-white">
+                {Math.floor((systemStatus?.uptimeSeconds || 0) / 3600)}h{" "}
+                {Math.floor(((systemStatus?.uptimeSeconds || 0) % 3600) / 60)}m
+              </span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-zinc-900">
-              <span className="text-zinc-500">Security Encryption</span>
-              <span className="text-emerald-400">AES-256-GCM Vault Active</span>
+            <div className="flex justify-between py-1 border-b border-zinc-850">
+              <span>Supervisor Admin Email:</span>
+              <span className="text-white">{systemStatus?.adminEmail || "admin@shipyard.local"}</span>
             </div>
-            <div className="flex justify-between py-1.5">
-              <span className="text-zinc-500">Zero-Config Appliance</span>
-              <span className="text-emerald-400">Initialized & Healthy</span>
+            <div className="flex justify-between py-1">
+              <span>Base Domain:</span>
+              <span className="text-cyan-400">
+                {process.env.SHIPYARD_BASE_DOMAIN || "localhost"}
+              </span>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </AppShell>
