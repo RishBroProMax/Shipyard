@@ -40,7 +40,7 @@ Shipyard is a **pure, self-hosted PaaS appliance** built for developers who want
 Run this one-line command on any clean Ubuntu, Debian, or CentOS VPS:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash
 ```
 
 > **Interactive Terminal Prompt:**  
@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install
 For unattended provisioning with Ansible, Terraform, or cloud-init:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash -s -- \
+curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash -s -- \
   --email admin@mycompany.com \
   --password "MyStrongSecretPass123" \
   --port 3000 \
@@ -187,7 +187,7 @@ sudo tar -czvf /root/shipyard-backup-$(date +%F).tar.gz /var/lib/shipyard/data
 ```bash
 sudo mkdir -p /var/lib/shipyard
 sudo tar -xzvf /root/shipyard-backup-*.tar.gz -C /
-curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash
 ```
 
 ---
