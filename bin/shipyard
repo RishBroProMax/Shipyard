@@ -86,11 +86,16 @@ cmd_update() {
 
     cd "${INSTALL_SOURCE}"
 
-    echo -e "${CYAN}▶ Checking for updates on origin/main...${NC}"
-    $SUDO git fetch origin main --quiet
+    $SUDO git fetch origin --quiet 2>/dev/null || true
+    TARGET_BRANCH="master"
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        TARGET_BRANCH="main"
+    fi
+
+    echo -e "${CYAN}▶ Checking for updates on origin/${TARGET_BRANCH}...${NC}"
 
     LOCAL_HASH=$(git rev-parse HEAD)
-    REMOTE_HASH=$(git rev-parse origin/main)
+    REMOTE_HASH=$(git rev-parse "origin/${TARGET_BRANCH}")
     FORCE_UPDATE=false
 
     if [[ "${1:-}" == "--force" || "${1:-}" == "-f" ]]; then
@@ -104,9 +109,9 @@ cmd_update() {
         exit 0
     fi
 
-    BEHIND_COUNT=$(git rev-list HEAD..origin/main --count)
+    BEHIND_COUNT=$(git rev-list "HEAD..origin/${TARGET_BRANCH}" --count 2>/dev/null || echo "1")
     echo -e "  Found ${YELLOW}${BEHIND_COUNT}${NC} new commit(s) from GitHub:"
-    git log --oneline HEAD..origin/main | head -n 5 | sed 's/^/    • /'
+    git log --oneline "HEAD..origin/${TARGET_BRANCH}" | head -n 5 | sed 's/^/    • /'
     echo ""
 
     echo -e "${CYAN}▶ Backing up environment configuration...${NC}"
@@ -115,8 +120,8 @@ cmd_update() {
         echo -e "${GREEN}  ✓ Configuration preserved.${NC}"
     fi
 
-    echo -e "${CYAN}▶ Pulling latest code changes...${NC}"
-    $SUDO git pull --ff-only origin main || (git fetch --all && git reset --hard origin/main)
+    echo -e "${CYAN}▶ Pulling latest code changes (${TARGET_BRANCH})...${NC}"
+    $SUDO git pull --ff-only origin "$TARGET_BRANCH" || (git fetch --all && git reset --hard "origin/${TARGET_BRANCH}")
     echo -e "${GREEN}  ✓ Latest release pulled successfully.${NC}"
 
     echo -e "${CYAN}▶ Updating global CLI binary...${NC}"

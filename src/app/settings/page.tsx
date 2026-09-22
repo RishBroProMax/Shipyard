@@ -435,7 +435,7 @@ export default function SettingsPage() {
               <div className="p-3 bg-black/70 rounded-xl border border-zinc-800/80 space-y-1">
                 <div className="text-[11px] text-zinc-400 font-sans">GitHub 1-Line Installer:</div>
                 <div className="text-cyan-400 select-all">
-                  curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
+                  curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash
                 </div>
               </div>
 

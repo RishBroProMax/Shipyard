@@ -3,10 +3,10 @@
 # ⚓ Shipyard PaaS — Next-Gen Self-Hosted Developer Appliance Installer
 #
 # Interactive usage (guided terminal prompt for email & admin password):
-#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash
 #
 # Headless / Scripted usage (CI/CD, cloud-init, Ansible):
-#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh | bash -s -- \
+#   curl -fsSL https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh | bash -s -- \
 #     --email admin@mycompany.com \
 #     --password "mySecurePassword" \
 #     --port 3000 \
@@ -255,9 +255,14 @@ echo -e "${BLUE}[ 3/7 ] 📦 Fetching Shipyard source repository...${NC}"
 INSTALL_SOURCE="${SHIPYARD_DATA_DIR}/source"
 
 if [ -d "${INSTALL_SOURCE}/.git" ]; then
-    echo -e "  Existing repository detected. Syncing origin/main..."
     cd "${INSTALL_SOURCE}"
-    git pull --ff-only origin main 2>/dev/null || (git fetch --all && git reset --hard origin/main)
+    git fetch --all --quiet 2>/dev/null || true
+    TARGET_BRANCH="master"
+    if git show-ref --verify --quiet refs/remotes/origin/main; then
+        TARGET_BRANCH="main"
+    fi
+    echo -e "  Existing repository detected. Syncing origin/${TARGET_BRANCH}..."
+    git pull --ff-only origin "$TARGET_BRANCH" 2>/dev/null || (git reset --hard "origin/${TARGET_BRANCH}")
 else
     $SUDO mkdir -p "${INSTALL_SOURCE}"
     if [ -n "$SUDO" ]; then
