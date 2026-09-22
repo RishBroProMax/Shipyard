@@ -72,6 +72,15 @@ if [ -n "$DATABASE_URL" ]; then
     echo "[Shipyard] ⚠ Schema sync warning (non-fatal — continuing)."
 fi
 
+# ── Bootstrap Appliance State & Admin Account ─────────────────────────────────
+if [ -f "/app/scripts/init-appliance.js" ]; then
+    echo "[Shipyard] Initializing appliance supervisor & admin account..."
+    node /app/scripts/init-appliance.js 2>/dev/null || echo "[Shipyard] ⚠ Appliance bootstrap note: will initialize on first request."
+fi
+
+# Ensure permissions are clean for the application user
+chown -R 1001:1001 /var/lib/shipyard/data 2>/dev/null || true
+
 echo ""
 echo "[Shipyard] Starting Next.js production server..."
 echo ""

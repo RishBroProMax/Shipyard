@@ -121,6 +121,26 @@ export const db = {
       const state = readState();
       return state.users.length;
     },
+    async update(id: string, updates: Partial<Omit<StoredUser, "id" | "createdAt">>): Promise<StoredUser | null> {
+      const state = readState();
+      const index = state.users.findIndex((u) => u.id === id);
+      if (index === -1) return null;
+      state.users[index] = {
+        ...state.users[index],
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+      writeState(state);
+      return state.users[index];
+    },
+    async delete(id: string): Promise<boolean> {
+      const state = readState();
+      const initialLength = state.users.length;
+      state.users = state.users.filter((u) => u.id !== id);
+      state.sessions = state.sessions.filter((s) => s.userId !== id);
+      writeState(state);
+      return state.users.length < initialLength;
+    },
   },
 
   // Sessions

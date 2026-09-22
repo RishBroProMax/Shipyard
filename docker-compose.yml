@@ -38,7 +38,7 @@ services:
       - SHIPYARD_ENCRYPTION_KEY=${SHIPYARD_ENCRYPTION_KEY:-}
     volumes:
       # Persistent data directory (secrets, logs, app files, caddy config)
-      - shipyard-data:/var/lib/shipyard/data
+      - ${SHIPYARD_DATA_DIR:-/var/lib/shipyard/data}:/var/lib/shipyard/data
       # Docker socket so Shipyard can orchestrate container builds
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
