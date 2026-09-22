@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { loadSecrets, isInitialized } from "@/lib/init/supervisor";
 import { syncProxyRoutes } from "@/lib/proxy/router";
 import { updateLocalNodeMetrics } from "@/lib/system/telemetry";
+import { docker } from "@/lib/agent/docker";
 import os from "os";
 
 export async function GET() {
@@ -13,10 +14,14 @@ export async function GET() {
     // Refresh local host node's live hardware telemetry
     await updateLocalNodeMetrics();
 
-    const servers = await db.servers.list();
-    const projects = await db.projects.list();
-    const deployments = await db.deployments.list(500);
-    const routes = await syncProxyRoutes();
+    const [servers, projects, deployments, routes, hasDocker, dockerVersion] = await Promise.all([
+      db.servers.list(),
+      db.projects.list(),
+      db.deployments.list(500),
+      syncProxyRoutes(),
+      docker.isAvailable(),
+      docker.getVersion(),
+    ]);
 
     // Aggregate cluster metrics
     let clusterCpuSum = 0;
@@ -71,7 +76,7 @@ export async function GET() {
         successRate:
           deployments.length > 0
             ? Math.round((successfulDeployments / deployments.length) * 100)
-            : 100,
+            : 0,
       },
       proxy: {
         activeRoutes: routes.length,
@@ -81,7 +86,10 @@ export async function GET() {
         database: { status: "UP", engine: "PostgreSQL 16 / Shipyard Engine" },
         redisQueue: { status: "UP", engine: "Redis 7 / Shipyard Worker Queue" },
         reverseProxy: { status: "UP", engine: "Dynamic Reverse Proxy / Caddy" },
-        dockerEngine: { status: "UP" },
+        dockerEngine: {
+          status: hasDocker ? "UP" : "STANDALONE",
+          version: dockerVersion,
+        },
       },
     });
   } catch (error) {

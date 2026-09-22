@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Copy, Check, Terminal, Server, Shield, Radio } from "lucide-react";
+import { X, Copy, Check, Terminal, Server, Shield, Radio, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 interface ConnectNodeModalProps {
   isOpen: boolean;
@@ -89,24 +92,29 @@ export function ConnectNodeModal({ isOpen, onClose, onNodeAdded }: ConnectNodeMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#0e0e11] border border-zinc-800 rounded-lg max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="bg-[#0b0c10] border border-zinc-800/90 rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/60">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded border border-zinc-700 bg-zinc-900 flex items-center justify-center text-zinc-200">
-              <Server className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800/80 bg-zinc-950/80">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl border border-zinc-700 bg-zinc-900 flex items-center justify-center text-cyan-400">
+              <Server className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">Connect Worker Node</h2>
-              <p className="text-[11px] text-zinc-400">
-                Run this command on any remote VPS, server, or PC to join the cluster
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white tracking-tight">Connect Worker Node</h2>
+                <Badge variant="cyan" className="font-mono text-[10px]">
+                  Cluster Scaling
+                </Badge>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Run this command on any remote VPS, bare-metal server, or PC to join the cluster
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+            className="p-1.5 rounded-xl hover:bg-zinc-800/80 text-zinc-400 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -114,63 +122,52 @@ export function ConnectNodeModal({ isOpen, onClose, onNodeAdded }: ConnectNodeMo
 
         {/* Modal Body */}
         <div className="p-6 space-y-5">
-          {/* Node Name input */}
+          {/* Node Identifier */}
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5 font-mono">
               Node Identifier (Optional)
             </label>
-            <input
+            <Input
               type="text"
-              placeholder="e.g. vps-hetzner-frankfurt or home-server-01"
+              placeholder="e.g. vps-hetzner-frankfurt or edge-worker-01"
               value={nodeName}
               onChange={(e) => setNodeName(e.target.value)}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200 focus:outline-none focus:border-zinc-600 font-mono"
+              className="font-mono text-xs"
             />
           </div>
 
-          {/* Tab Selector: cURL / Docker / Node */}
+          {/* Mode Tabs */}
           <div className="flex items-center gap-2 border-b border-zinc-800 pb-2">
-            <button
-              onClick={() => setActiveTab("curl")}
-              className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
-                activeTab === "curl"
-                  ? "bg-zinc-800 text-zinc-100 border border-zinc-700"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Linux Shell (cURL)
-            </button>
-            <button
-              onClick={() => setActiveTab("docker")}
-              className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
-                activeTab === "docker"
-                  ? "bg-zinc-800 text-zinc-100 border border-zinc-700"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Docker Container
-            </button>
-            <button
-              onClick={() => setActiveTab("node")}
-              className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
-                activeTab === "node"
-                  ? "bg-zinc-800 text-zinc-100 border border-zinc-700"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-            >
-              Node.js Standalone
-            </button>
+            {[
+              { id: "curl", label: "Linux Shell (cURL)" },
+              { id: "docker", label: "Docker Container" },
+              { id: "node", label: "Node.js Standalone" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`text-xs px-3 py-1.5 rounded-xl font-medium transition-all ${
+                  activeTab === tab.id
+                    ? "bg-zinc-800 text-white border border-zinc-700 shadow-sm"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Command Display */}
           <div className="relative group">
-            <div className="bg-black/90 border border-zinc-800 rounded-md p-4 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre leading-relaxed selection:bg-zinc-800">
+            <div className="bg-black/90 border border-zinc-800 rounded-xl p-4 font-mono text-xs text-zinc-300 overflow-x-auto whitespace-pre leading-relaxed select-text">
               {isGenerating ? "Generating cryptographic node token..." : currentCommand}
             </div>
-            <button
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={handleCopy}
               disabled={isGenerating || !token}
-              className="absolute top-3 right-3 px-2.5 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-medium text-zinc-200 flex items-center gap-1.5 transition-colors"
+              className="absolute top-3 right-3 gap-1.5"
             >
               {copied ? (
                 <>
@@ -183,49 +180,47 @@ export function ConnectNodeModal({ isOpen, onClose, onNodeAdded }: ConnectNodeMo
                   <span>Copy</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
 
-          {/* Security & Architecture Note */}
-          <div className="flex items-start gap-2.5 p-3 rounded bg-zinc-900/50 border border-zinc-800/80 text-[11px] text-zinc-400">
+          {/* Security Note */}
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-800 text-[11px] text-zinc-400">
             <Shield className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium text-zinc-300">Super Zero-Trust Architecture</p>
-              <p className="mt-0.5">
-                The agent communicates outbound via HTTPS/WSS to this leader. It reports real-time CPU, RAM, and Network stats every 3s and executes container builds inside isolated Docker sandboxes. Untrusted code never touches this control plane.
+              <p className="font-semibold text-zinc-200">Zero-Trust Outbound Architecture</p>
+              <p className="mt-0.5 leading-relaxed">
+                The agent initiates an outbound WebSocket/HTTPS connection to this control plane. It exposes no inbound ports to the internet, reports kernel telemetry every 3s, and runs builds in isolated Docker sandboxes.
               </p>
             </div>
           </div>
 
-          {/* Connection Listener Pulse */}
-          <div className="flex items-center justify-between p-3 rounded bg-zinc-950 border border-zinc-800">
-            <div className="flex items-center gap-2">
+          {/* Heartbeat Status Listener */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-950 border border-zinc-800/80">
+            <div className="flex items-center gap-2.5">
               {connectedNode ? (
                 <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  <span className="text-xs text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs text-emerald-400 font-medium font-mono">
                     Node Connected: {connectedNode}
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
                   </span>
-                  <span className="text-xs text-zinc-400">
-                    Waiting for agent heartbeat from remote machine...
+                  <span className="text-xs text-zinc-400 font-mono">
+                    Listening for remote heartbeat pulse...
                   </span>
                 </>
               )}
             </div>
+
             {connectedNode && (
-              <button
-                onClick={onClose}
-                className="text-xs px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded font-medium"
-              >
-                Done
-              </button>
+              <Button size="sm" variant="cyan" onClick={onClose}>
+                Finish
+              </Button>
             )}
           </div>
         </div>
