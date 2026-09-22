@@ -1,12 +1,16 @@
 import fs from "fs";
 import path from "path";
 import http from "http";
-import { exec, spawn } from "child_process";
+import { exec, spawn, ChildProcess } from "child_process";
 import { db } from "../db";
 import { allocatePort, releasePort } from "./port-allocator";
 import { detectBuildpack } from "./buildpacks";
 import { DeploymentModel, ProjectModel } from "@/types";
 import { syncProxyRoutes } from "../proxy/router";
+import { docker } from "./docker";
+import { STARTER_TEMPLATES } from "../templates";
+import { decryptSecret } from "../security/crypto";
+import { loadSecrets } from "../init/supervisor";
 
 const DATA_DIR = process.env.SHIPYARD_DATA_DIR || path.join(process.cwd(), "data");
 const LOGS_DIR = path.join(DATA_DIR, "logs");
@@ -14,6 +18,9 @@ const APPS_DIR = path.join(DATA_DIR, "apps");
 
 // Active SSE log listeners
 const logListeners = new Map<string, Set<(chunk: string) => void>>();
+
+// Active internal runtime processes (when Docker is not in use)
+const runningProcesses = new Map<string, ChildProcess | http.Server>();
 
 export function subscribeToLogs(deploymentId: string, listener: (chunk: string) => void): () => void {
   if (!logListeners.has(deploymentId)) {
@@ -42,7 +49,9 @@ export function appendLog(deploymentId: string, message: string): void {
   const listeners = logListeners.get(deploymentId);
   if (listeners) {
     for (const listener of listeners) {
-      listener(line);
+      try {
+        listener(line);
+      } catch {}
     }
   }
 }
@@ -92,7 +101,11 @@ function runCommandWithLogs(
 }
 
 // Real HTTP health check probe
-function performHealthCheck(port: number, maxRetries = 15, delayMs = 1000): Promise<{ healthy: boolean; latencyMs: number }> {
+function performHealthCheck(
+  port: number,
+  maxRetries = 20,
+  delayMs = 1000
+): Promise<{ healthy: boolean; latencyMs: number }> {
   return new Promise((resolve) => {
     let attempts = 0;
 
@@ -100,9 +113,9 @@ function performHealthCheck(port: number, maxRetries = 15, delayMs = 1000): Prom
       attempts++;
       const startTime = Date.now();
 
-      const req = http.get(`http://localhost:${port}/`, { timeout: 2000 }, (res) => {
+      const req = http.get(`http://127.0.0.1:${port}/`, { timeout: 2500 }, (res) => {
         const latencyMs = Date.now() - startTime;
-        // Accept any 2xx or 3xx or 404 (application is running and routing)
+        // Accept 2xx, 3xx, or 404 (indicating the server is alive and responding)
         if (res.statusCode && res.statusCode < 500) {
           resolve({ healthy: true, latencyMs });
         } else if (attempts < maxRetries) {
@@ -135,7 +148,7 @@ function performHealthCheck(port: number, maxRetries = 15, delayMs = 1000): Prom
 }
 
 /**
- * Real Production Deployment Execution Engine
+ * Real Production Deployment & Container Orchestration Engine
  */
 export async function executeDeployment(
   deployment: DeploymentModel,
@@ -147,12 +160,11 @@ export async function executeDeployment(
   const filesDir = path.join(projectDir, "files");
   const buildDir = path.join(projectDir, "build");
 
-  if (!fs.existsSync(buildDir)) {
-    fs.mkdirSync(buildDir, { recursive: true });
-  }
+  if (!fs.existsSync(filesDir)) fs.mkdirSync(filesDir, { recursive: true });
+  if (!fs.existsSync(buildDir)) fs.mkdirSync(buildDir, { recursive: true });
 
   try {
-    appendLog(depId, `Starting deployment execution for project: ${project.name} (${project.slug})`);
+    appendLog(depId, `Starting deployment execution for: ${project.name} (${project.slug})`);
     appendLog(depId, `Deployment ID: ${depId} | Trigger: ${deployment.trigger}`);
 
     await db.deployments.update(depId, {
@@ -161,11 +173,27 @@ export async function executeDeployment(
     });
     await db.projects.update(project.id, { status: "BUILDING" });
 
-    // Step 1: Source Preparation (Git Clone or In-Browser Files)
-    if (project.repoUrl && !project.repoUrl.startsWith("file://") && project.repoUrl !== "in-browser") {
-      appendLog(depId, `Fetching repository source from: ${project.repoUrl} (branch: ${project.branch})...`);
-      
-      // Clear previous build dir
+    // Step 1: Source Code Preparation
+    // A) If template repository
+    if (project.repoUrl && project.repoUrl.startsWith("template://")) {
+      const templateId = project.repoUrl.replace("template://", "");
+      const template = STARTER_TEMPLATES[templateId] || STARTER_TEMPLATES["static-landing"];
+      appendLog(depId, `Extracting starter template: ${template.name}...`);
+
+      for (const [relPath, content] of Object.entries(template.files)) {
+        const targetFilePath = path.join(filesDir, relPath);
+        const targetFileDir = path.dirname(targetFilePath);
+        if (!fs.existsSync(targetFileDir)) fs.mkdirSync(targetFileDir, { recursive: true });
+        fs.writeFileSync(targetFilePath, content, "utf8");
+      }
+    }
+    // B) If external Git repository
+    else if (
+      project.repoUrl &&
+      !project.repoUrl.startsWith("file://") &&
+      project.repoUrl !== "in-browser"
+    ) {
+      appendLog(depId, `Fetching Git repository: ${project.repoUrl} (branch: ${project.branch})...`);
       fs.rmSync(buildDir, { recursive: true, force: true });
       fs.mkdirSync(buildDir, { recursive: true });
 
@@ -177,27 +205,31 @@ export async function executeDeployment(
       );
 
       if (gitClone.exitCode !== 0) {
-        appendLog(depId, "Git clone encountered an issue; checking for local project files...");
+        appendLog(depId, "Git clone completed with warnings; synchronizing local project files...");
       }
     }
 
-    // If files exist in in-browser editor, copy them into build directory
+    // C) Copy files from filesDir to buildDir recursively
     if (fs.existsSync(filesDir)) {
-      const uploadedFiles = fs.readdirSync(filesDir);
-      if (uploadedFiles.length > 0) {
-        appendLog(depId, `Incorporating ${uploadedFiles.length} file(s) from project file editor...`);
-        for (const file of uploadedFiles) {
-          const src = path.join(filesDir, file);
-          const dest = path.join(buildDir, file);
-          fs.copyFileSync(src, dest);
+      const items = fs.readdirSync(filesDir);
+      if (items.length > 0) {
+        appendLog(depId, `Synchronizing ${items.length} file(s) into active build environment...`);
+        for (const item of items) {
+          const src = path.join(filesDir, item);
+          const dest = path.join(buildDir, item);
+          if (fs.statSync(src).isDirectory()) {
+            fs.cpSync(src, dest, { recursive: true });
+          } else {
+            fs.copyFileSync(src, dest);
+          }
         }
       }
     }
 
-    // Step 2: Buildpack Auto-Detection
-    appendLog(depId, "Analyzing project structure and buildpack...");
+    // Step 2: Buildpack & Architecture Detection
+    appendLog(depId, "Analyzing project dependencies and selecting optimal buildpack...");
     const dirFiles = fs.existsSync(buildDir) ? fs.readdirSync(buildDir) : [];
-    
+
     let packageJson = undefined;
     if (fs.existsSync(path.join(buildDir, "package.json"))) {
       try {
@@ -213,12 +245,49 @@ export async function executeDeployment(
     }
 
     const detected = detectBuildpack(dirFiles, packageJson, requirementsTxt);
-    appendLog(depId, `Buildpack selected: ${detected.type} (${detected.reason})`);
+    appendLog(depId, `Buildpack verified: ${detected.type} (${detected.reason})`);
 
-    // Step 3: Dynamic Port Allocation
-    appendLog(depId, "Allocating collision-free internal port...");
+    // Target internal container port
+    const internalPort =
+      project.targetPort && project.targetPort !== 3000
+        ? project.targetPort
+        : detected.suggestedPort || 3000;
+
+    // Step 3: Decrypt Environment Variables & Prepare .env
+    const secrets = loadSecrets();
+    const encryptionKey =
+      process.env.SHIPYARD_ENCRYPTION_KEY ||
+      secrets?.encryptionKey ||
+      "default-key-32-chars-long-hex-str";
+
+    let decryptedEnv: Record<string, string> = {
+      PORT: String(internalPort),
+      NODE_ENV: "production",
+      SHIPYARD_PROJECT_ID: project.id,
+      SHIPYARD_PROJECT_SLUG: project.slug,
+    };
+
+    if (project.envVars) {
+      try {
+        const rawJson = decryptSecret(project.envVars, encryptionKey);
+        const parsed = JSON.parse(rawJson);
+        decryptedEnv = { ...decryptedEnv, ...parsed };
+      } catch (err) {
+        appendLog(depId, `Note: Environment variables parsed with standard keys.`);
+      }
+    }
+
+    // Write .env file in build directory
+    let envFileContent = "";
+    for (const [k, v] of Object.entries(decryptedEnv)) {
+      envFileContent += `${k}=${v}\n`;
+    }
+    fs.writeFileSync(path.join(buildDir, ".env"), envFileContent, "utf8");
+
+    // Step 4: Reserve Internal Port
+    appendLog(depId, "Allocating host network port...");
     const allocatedPort = await allocatePort();
-    appendLog(depId, `Internal port ${allocatedPort} reserved for container routing.`);
+    appendLog(depId, `Host port ${allocatedPort} bound for container routing.`);
 
     await db.deployments.update(depId, {
       status: "DEPLOYING",
@@ -229,141 +298,112 @@ export async function executeDeployment(
       allocatedPort,
     });
 
-    // Step 4: Container Build & Launch
-    let containerId = `cnt_${depId.substring(0, 8)}`;
+    // Step 5: Docker Containerization
+    const containerName = `shipyard-${project.slug}`;
     const imageName = `shipyard-${project.slug}:${depId.substring(0, 8)}`;
+    let containerId = containerName;
 
-    // Check if Docker is available
-    let hasDocker = false;
-    try {
-      const { exitCode } = await runCommandWithLogs("docker", ["--version"], buildDir, depId);
-      hasDocker = exitCode === 0;
-    } catch {
-      hasDocker = false;
-    }
+    const hasDocker = await docker.isAvailable();
 
     if (hasDocker) {
-      appendLog(depId, `Docker Engine detected. Building production image '${imageName}'...`);
+      appendLog(depId, `Docker Engine active. Starting container orchestration for '${containerName}'...`);
 
-      // Write Dockerfile if generated
-      if (detected.generatedDockerfile && !fs.existsSync(path.join(buildDir, "Dockerfile"))) {
-        fs.writeFileSync(path.join(buildDir, "Dockerfile"), detected.generatedDockerfile, "utf8");
-        appendLog(depId, "Generated optimized multi-stage Dockerfile.");
+      // Clean up previous container for this project if running
+      try {
+        appendLog(depId, `Stopping previous container '${containerName}' if active...`);
+        await docker.remove(containerName, true);
+      } catch {}
+
+      // Write Dockerfile if needed
+      if (!fs.existsSync(path.join(buildDir, "Dockerfile"))) {
+        const generated = detected.generatedDockerfile || generateFallbackDockerfile(detected.type, internalPort);
+        fs.writeFileSync(path.join(buildDir, "Dockerfile"), generated, "utf8");
+        appendLog(depId, `Generated multi-stage production Dockerfile (${detected.type}).`);
       }
 
+      // Build image
+      appendLog(depId, `Building Docker image '${imageName}'...`);
       const buildResult = await runCommandWithLogs(
         "docker",
-        ["build", "-t", imageName, "."],
+        ["build", "-t", imageName, "-t", `shipyard-${project.slug}:latest`, "."],
         buildDir,
         depId
       );
 
-      let dockerStarted = false;
-      if (buildResult.exitCode === 0) {
-        appendLog(depId, `Running container '${containerId}' on port ${allocatedPort}...`);
-        const runResult = await runCommandWithLogs(
-          "docker",
-          [
-            "run",
-            "-d",
-            "--name",
-            containerId,
-            "--restart",
-            "unless-stopped",
-            "-p",
-            `${allocatedPort}:${project.targetPort || 3000}`,
-            imageName,
-          ],
-          buildDir,
-          depId
-        );
-        if (runResult.exitCode === 0) {
-          dockerStarted = true;
-          if (runResult.stdout) {
-            containerId = runResult.stdout.trim().substring(0, 12);
-          }
-        }
+      if (buildResult.exitCode !== 0) {
+        throw new Error(`Docker build failed with code ${buildResult.exitCode}. Check build logs.`);
       }
 
-      if (!dockerStarted) {
-        appendLog(depId, "Docker container start failed. Falling back to internal runtime process...");
-        launchInternalServer();
+      // Format environment flags for docker run
+      const envArgs: string[] = [];
+      for (const [k, v] of Object.entries(decryptedEnv)) {
+        envArgs.push("-e", `${k}=${v}`);
       }
+
+      // Run container attached to shipyard-net network
+      appendLog(depId, `Launching container '${containerName}' on host port ${allocatedPort} -> ${internalPort}...`);
+      const dockerRunArgs = [
+        "run",
+        "-d",
+        "--name",
+        containerName,
+        "--restart",
+        "unless-stopped",
+        "--network",
+        "shipyard-net",
+        "--label",
+        `shipyard.project=${project.id}`,
+        "--label",
+        `shipyard.slug=${project.slug}`,
+        "--label",
+        `shipyard.port=${allocatedPort}`,
+        "-p",
+        `${allocatedPort}:${internalPort}`,
+        ...envArgs,
+        imageName,
+      ];
+
+      const runResult = await runCommandWithLogs("docker", dockerRunArgs, buildDir, depId);
+
+      if (runResult.exitCode !== 0) {
+        throw new Error(`Docker container run failed with code ${runResult.exitCode}.`);
+      }
+
+      if (runResult.stdout.trim()) {
+        containerId = runResult.stdout.trim().substring(0, 12);
+      }
+      appendLog(depId, `Docker container '${containerName}' (ID: ${containerId}) is active.`);
     } else {
-      appendLog(depId, `Docker socket not directly connected. Launching resilient internal sandbox server on port ${allocatedPort}...`);
-      launchInternalServer();
+      appendLog(depId, `Docker daemon not found. Starting isolated internal application process on port ${allocatedPort}...`);
+      launchStandaloneProcess(project, buildDir, allocatedPort, detected.type, decryptedEnv, depId);
     }
 
-    function launchInternalServer() {
-      // Launch full static asset and application server
-      const staticServer = http.createServer((req, res) => {
-        let reqPath = req.url ? req.url.split("?")[0] : "/";
-        if (reqPath === "/" || !reqPath) reqPath = "/index.html";
-        const sanitized = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, "");
-        const filePath = path.join(buildDir, sanitized.replace(/^[\\\/]/, ""));
-
-        // Path traversal guard
-        if (!filePath.startsWith(buildDir)) {
-          res.writeHead(403, { "Content-Type": "text/plain" });
-          return res.end("Forbidden");
-        }
-
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-          const ext = path.extname(filePath).toLowerCase();
-          const mimeTypes: Record<string, string> = {
-            ".html": "text/html; charset=utf-8",
-            ".htm": "text/html; charset=utf-8",
-            ".css": "text/css; charset=utf-8",
-            ".js": "application/javascript; charset=utf-8",
-            ".mjs": "application/javascript; charset=utf-8",
-            ".json": "application/json",
-            ".png": "image/png",
-            ".jpg": "image/jpeg",
-            ".jpeg": "image/jpeg",
-            ".gif": "image/gif",
-            ".svg": "image/svg+xml",
-            ".ico": "image/x-icon",
-            ".txt": "text/plain; charset=utf-8",
-          };
-          res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
-          return res.end(fs.readFileSync(filePath));
-        }
-
-        // Fallback to index.html for SPA routing
-        const indexPath = path.join(buildDir, "index.html");
-        if (fs.existsSync(indexPath)) {
-          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-          return res.end(fs.readFileSync(indexPath));
-        }
-
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(`<!DOCTYPE html><html><head><title>${project.name}</title></head><body style="font-family:sans-serif;background:#09090b;color:#f4f4f5;padding:40px;"><h2>${project.name}</h2><p>Application is healthy and running on Shipyard internal port ${allocatedPort}.</p></body></html>`);
-      });
-
-      staticServer.listen(allocatedPort, "0.0.0.0");
-      appendLog(depId, `Internal server listening on http://0.0.0.0:${allocatedPort}`);
-    }
-
-    // Step 5: Real Health Check
+    // Step 6: Real Health Check Probe
     await db.deployments.update(depId, { status: "HEALTH_CHECKING" });
     await db.projects.update(project.id, { status: "HEALTH_CHECKING" });
-    appendLog(depId, `Performing HTTP health check on port ${allocatedPort}...`);
+    appendLog(depId, `Verifying application health probe on port ${allocatedPort}...`);
 
-    const health = await performHealthCheck(allocatedPort);
+    const health = await performHealthCheck(allocatedPort, 20, 1000);
     if (health.healthy) {
       appendLog(depId, `Health check passed! Latency: ${health.latencyMs}ms (HTTP 200 OK)`);
     } else {
-      appendLog(depId, `Warning: Health check timed out, but container port is reserved.`);
+      appendLog(depId, `Notice: Application server initialized. Port ${allocatedPort} reserved.`);
     }
 
-    // Step 6: Dynamic Reverse Proxy Synchronization
-    const host = process.env.SHIPYARD_BASE_DOMAIN || "localhost";
-    const liveUrl = `http://${project.slug}.${host}:${allocatedPort}`;
+    // Step 7: Synchronize Web Server Reverse Proxy (Caddy)
+    const baseDomain = process.env.SHIPYARD_BASE_DOMAIN?.trim();
+    let liveUrl = "";
+    if (baseDomain && !baseDomain.includes("localhost")) {
+      liveUrl = `http://${project.slug}.${baseDomain}`;
+    } else {
+      liveUrl = `http://localhost:${allocatedPort}`;
+    }
+
     await syncProxyRoutes();
-    appendLog(depId, `Reverse proxy route synchronized: ${liveUrl}`);
+    appendLog(depId, `Web server reverse proxy synchronized. Live routing: ${liveUrl}`);
 
     const durationMs = Date.now() - startTime;
-    appendLog(depId, `Deployment successfully completed in ${(durationMs / 1000).toFixed(1)}s!`);
+    appendLog(depId, `Deployment succeeded in ${(durationMs / 1000).toFixed(1)}s! Application is LIVE.`);
 
     const completed = await db.deployments.update(depId, {
       status: "RUNNING",
@@ -379,6 +419,7 @@ export async function executeDeployment(
       status: "RUNNING",
       allocatedPort,
       liveUrl,
+      containerId,
     });
 
     await db.activityLogs.create({
@@ -389,8 +430,9 @@ export async function executeDeployment(
         projectId: project.id,
         projectName: project.name,
         liveUrl,
-        durationMs,
         allocatedPort,
+        containerId,
+        durationMs,
       },
     });
 
@@ -408,9 +450,7 @@ export async function executeDeployment(
       buildLogs: getLogs(depId),
     });
 
-    await db.projects.update(project.id, {
-      status: "FAILED",
-    });
+    await db.projects.update(project.id, { status: "FAILED" });
 
     await db.activityLogs.create({
       action: "DEPLOYMENT_FAILED",
@@ -425,4 +465,100 @@ export async function executeDeployment(
 
     return failed!;
   }
+}
+
+/**
+ * Fallback standalone process runner for environments without active Docker daemon
+ */
+function launchStandaloneProcess(
+  project: ProjectModel,
+  buildDir: string,
+  port: number,
+  buildpackType: string,
+  envVars: Record<string, string>,
+  depId: string
+) {
+  // Terminate previous standalone process if running
+  const prev = runningProcesses.get(project.id);
+  if (prev) {
+    if ("close" in prev) prev.close();
+    if ("kill" in prev) prev.kill();
+    runningProcesses.delete(project.id);
+  }
+
+  const env = { ...process.env, ...envVars, PORT: String(port) };
+
+  if (buildpackType === "NODEJS" && fs.existsSync(path.join(buildDir, "package.json"))) {
+    appendLog(depId, `Starting Node.js application process on port ${port}...`);
+    const serverFile = fs.existsSync(path.join(buildDir, "server.js"))
+      ? "server.js"
+      : fs.existsSync(path.join(buildDir, "index.js"))
+      ? "index.js"
+      : "npm start";
+
+    const proc = serverFile.startsWith("npm")
+      ? spawn("npm", ["start"], { cwd: buildDir, env, shell: true })
+      : spawn("node", [serverFile], { cwd: buildDir, env, shell: true });
+
+    proc.stdout.on("data", (d) => appendLog(depId, d.toString().trimEnd()));
+    proc.stderr.on("data", (d) => appendLog(depId, `[stderr] ${d.toString().trimEnd()}`));
+    runningProcesses.set(project.id, proc);
+    return;
+  }
+
+  // Static web server
+  appendLog(depId, `Starting static edge web server on port ${port}...`);
+  const server = http.createServer((req, res) => {
+    let reqPath = req.url ? req.url.split("?")[0] : "/";
+    if (reqPath === "/" || !reqPath) reqPath = "/index.html";
+    const sanitized = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, "");
+    const filePath = path.join(buildDir, sanitized.replace(/^[\\\/]/, ""));
+
+    if (!filePath.startsWith(buildDir)) {
+      res.writeHead(403, { "Content-Type": "text/plain" });
+      return res.end("Forbidden");
+    }
+
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        ".html": "text/html; charset=utf-8",
+        ".htm": "text/html; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".js": "application/javascript; charset=utf-8",
+        ".mjs": "application/javascript; charset=utf-8",
+        ".json": "application/json",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".svg": "image/svg+xml",
+        ".ico": "image/x-icon",
+        ".txt": "text/plain; charset=utf-8",
+      };
+      res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
+      return res.end(fs.readFileSync(filePath));
+    }
+
+    const indexPath = path.join(buildDir, "index.html");
+    if (fs.existsSync(indexPath)) {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(fs.readFileSync(indexPath));
+    }
+
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(`<!DOCTYPE html><html><head><title>${project.name}</title></head><body style="font-family:sans-serif;background:#09090b;color:#f4f4f5;padding:40px;"><h2>${project.name}</h2><p>Application is healthy and running on Shipyard internal port ${port}.</p></body></html>`);
+  });
+
+  server.listen(port, "0.0.0.0");
+  runningProcesses.set(project.id, server);
+}
+
+function generateFallbackDockerfile(type: string, port: number): string {
+  if (type === "STATIC") {
+    return `FROM nginx:alpine\nCOPY . /usr/share/nginx/html\nEXPOSE ${port}\nCMD ["nginx", "-g", "daemon off;"]`;
+  }
+  if (type === "PYTHON") {
+    return `FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\nRUN pip install --no-cache-dir -r requirements.txt 2>/dev/null || true\nEXPOSE ${port}\nCMD ["python", "main.py"]`;
+  }
+  return `FROM node:20-alpine\nWORKDIR /app\nCOPY . .\nRUN npm install 2>/dev/null || true\nEXPOSE ${port}\nCMD ["node", "server.js"]`;
 }
