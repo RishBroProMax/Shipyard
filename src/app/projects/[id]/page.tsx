@@ -573,8 +573,9 @@ export default function ProjectDetailPage() {
         <Card className="h-[650px] overflow-hidden p-0">
           <FileEditor
             projectId={project.id}
+            onDeployRequested={() => handleDeploy()}
             onFileSaved={() => {
-              // Trigger auto redeploy on code edit
+              // Trigger auto redeploy on code edit if needed
             }}
           />
         </Card>

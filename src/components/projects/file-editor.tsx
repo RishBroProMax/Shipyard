@@ -23,10 +23,11 @@ interface ProjectFile {
 
 interface FileEditorProps {
   projectId: string;
-  onDeployRequested: () => void;
+  onDeployRequested?: () => void;
+  onFileSaved?: () => void;
 }
 
-export function FileEditor({ projectId, onDeployRequested }: FileEditorProps) {
+export function FileEditor({ projectId, onDeployRequested, onFileSaved }: FileEditorProps) {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [selectedFilePath, setSelectedFilePath] = useState<string>("index.html");
   const [content, setContent] = useState<string>("");
@@ -87,6 +88,7 @@ export function FileEditor({ projectId, onDeployRequested }: FileEditorProps) {
       setOriginalContent(content);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
+      if (onFileSaved) onFileSaved();
       fetchFiles();
     } catch {
     } finally {
@@ -96,7 +98,7 @@ export function FileEditor({ projectId, onDeployRequested }: FileEditorProps) {
 
   const handleSaveAndDeploy = async () => {
     await handleSave();
-    onDeployRequested();
+    if (onDeployRequested) onDeployRequested();
   };
 
   const handleCreateFile = async (e: React.FormEvent) => {
