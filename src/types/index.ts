@@ -33,6 +33,7 @@ export interface ProjectModel {
   runCommand?: string | null;
   targetPort: number;
   allocatedPort?: number | null;
+  containerId?: string | null;
   liveUrl?: string | null;
   status: ProjectStatus;
   autoDeploy: boolean;
