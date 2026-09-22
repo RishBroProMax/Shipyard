@@ -26,7 +26,7 @@ TMPFILE="$(mktemp /tmp/shipyard-install-XXXXXX.sh)"
 trap 'rm -f "$TMPFILE"' EXIT
 
 echo "Downloading Shipyard installer from GitHub..."
-curl -fsSL "https://raw.githubusercontent.com/RishBroProMax/Shipyard/main/install.sh" -o "$TMPFILE"
+curl -fsSL "https://raw.githubusercontent.com/RishBroProMax/Shipyard/master/install.sh" -o "$TMPFILE"
 chmod +x "$TMPFILE"
 bash "$TMPFILE" "$@"
 `;
