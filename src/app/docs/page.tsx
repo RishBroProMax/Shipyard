@@ -34,6 +34,12 @@ import {
   FolderTree,
   KeyRound,
   Boxes,
+  Sliders,
+  RefreshCw,
+  HardDrive,
+  ShieldCheck,
+  AlertCircle,
+  Network,
 } from "lucide-react";
 
 interface DocSection {
@@ -80,17 +86,11 @@ export default function DocsPage() {
     }
   };
 
-  const installCmd = `curl -fsSL ${currentOrigin}/install.sh | sh`;
-  const agentCmd = `curl -fsSL ${currentOrigin}/agent_install | sh -s -- --token <CLUSTER_TOKEN>`;
+  const installCmd = `curl -fsSL ${currentOrigin}/install.sh | bash`;
+  const agentCmd = `curl -fsSL ${currentOrigin}/agent_install | bash -s -- --token <CLUSTER_TOKEN>`;
 
   const docSections: DocSection[] = [
-    {
-      id: "overview",
-      category: "Introduction",
-      title: "Overview & Philosophy",
-      badge: "Core",
-      keywords: ["overview", "about", "philosophy", "architecture", "paas", "self-hosted"],
-    },
+    // Getting Started
     {
       id: "quickstart",
       category: "Getting Started",
@@ -99,23 +99,46 @@ export default function DocsPage() {
       keywords: ["install", "curl", "quickstart", "setup", "vps", "linux", "bootstrap"],
     },
     {
+      id: "interactive-setup",
+      category: "Getting Started",
+      title: "Interactive Email & Password Setup",
+      badge: "Credentials",
+      keywords: ["password", "email", "interactive", "tty", "admin", "setup", "credentials"],
+    },
+    {
       id: "prerequisites",
       category: "Getting Started",
-      title: "System Specs & Hardware",
+      title: "System Requirements & Hardware",
       badge: "Specs",
       keywords: ["requirements", "ubuntu", "debian", "memory", "ram", "cpu", "docker"],
     },
     {
+      id: "swap-guide",
+      category: "Getting Started",
+      title: "Low-RAM VPS & Swap Setup (Fix OOM 137)",
+      badge: "Crucial",
+      keywords: ["swap", "oom", "137", "ram", "low memory", "build failed", "fallocate"],
+    },
+
+    // Architecture
+    {
+      id: "overview",
+      category: "Architecture",
+      title: "Architecture Overview & Philosophy",
+      badge: "Core",
+      keywords: ["overview", "about", "philosophy", "architecture", "paas", "self-hosted"],
+    },
+    {
       id: "dual-modes",
       category: "Architecture",
-      title: "Vercel vs Self-Hosted Appliance",
-      badge: "Dual-Mode",
+      title: "Dual-Mode (Vercel vs Appliance)",
+      badge: "Hybrid",
       keywords: ["vercel", "appliance", "cloud", "hybrid", "repository", "modes"],
     },
     {
       id: "supervisor",
       category: "Architecture",
-      title: "Supervisor State Engine & Zero-Config",
+      title: "Supervisor State Engine & DB",
       badge: "Engine",
       keywords: ["supervisor", "database", "postgres", "redis", "migrations", "keys"],
     },
@@ -124,63 +147,113 @@ export default function DocsPage() {
       category: "Architecture",
       title: "Real Kernel Telemetry (0 Mock)",
       badge: "Telemetry",
-      keywords: ["telemetry", "hardware", "cpu", "ram", "metrics", "os", "real-time"],
+      keywords: ["telemetry", "hardware", "cpu", "ram", "metrics", "os", "proc"],
     },
+
+    // Networking & SSL
+    {
+      id: "firewall-ports",
+      category: "Networking & SSL",
+      title: "Firewall Rules & Port Matrix",
+      badge: "Firewall",
+      keywords: ["firewall", "ufw", "ports", "iptables", "security group", "80", "443"],
+    },
+    {
+      id: "port-conflicts",
+      category: "Networking & SSL",
+      title: "Resolving Port 80 & 443 Conflicts",
+      badge: "Runbook",
+      keywords: ["port conflict", "apache", "nginx", "bind", "address in use", "80", "443"],
+    },
+    {
+      id: "reverse-proxy",
+      category: "Networking & SSL",
+      title: "Caddy Dynamic Proxy & Auto-SSL",
+      badge: "Let's Encrypt",
+      keywords: ["domains", "ssl", "caddy", "reverse-proxy", "https", "certificates", "cloudflare"],
+    },
+
+    // Deploying Applications
     {
       id: "deploy-git",
       category: "Deploying Applications",
-      title: "Deploying via Git Webhooks",
+      title: "Deploying from Git & Webhooks",
       badge: "CI/CD",
       keywords: ["git", "github", "webhook", "ci", "cd", "sse", "stream", "rollback"],
     },
     {
       id: "deploy-files",
       category: "Deploying Applications",
-      title: "In-Browser File Studio & Static Apps",
+      title: "In-Browser File Studio",
       badge: "Web IDE",
       keywords: ["editor", "html", "css", "js", "static", "upload", "files", "browser"],
     },
     {
       id: "deploy-docker",
       category: "Deploying Applications",
-      title: "Custom Dockerfiles & Frameworks",
+      title: "Dockerfiles & Buildpacks",
       badge: "Containers",
       keywords: ["dockerfile", "container", "node", "python", "go", "nextjs"],
     },
     {
+      id: "security-vault",
+      category: "Deploying Applications",
+      title: "AES-256 Secret Vault",
+      badge: "AES-256",
+      keywords: ["security", "vault", "encryption", "aes", "gcm", "isolation", "env"],
+    },
+
+    // Cluster & Operations
+    {
       id: "worker-nodes",
-      category: "Cluster & Mesh",
-      title: "Connecting Worker Nodes",
+      category: "Cluster & Operations",
+      title: "Connecting Remote Worker Nodes",
       badge: "Multi-Node",
       keywords: ["worker", "nodes", "cluster", "scaling", "agent", "remote", "mesh"],
     },
     {
-      id: "reverse-proxy",
-      category: "Networking & SSL",
-      title: "Dynamic Caddy Proxy & Auto-SSL",
-      badge: "Let's Encrypt",
-      keywords: ["domains", "ssl", "caddy", "reverse-proxy", "ports", "https", "certificates"],
+      id: "password-reset",
+      category: "Cluster & Operations",
+      title: "Admin Password Reset via CLI",
+      badge: "Admin",
+      keywords: ["reset password", "admin", "forgot password", "cli", "credential"],
     },
     {
-      id: "security-vault",
-      category: "Security & Encryption",
-      title: "AES-256-GCM Vault & Isolation",
-      badge: "AES-256",
-      keywords: ["security", "vault", "encryption", "aes", "gcm", "isolation", "sandbox"],
+      id: "backup-recovery",
+      category: "Cluster & Operations",
+      title: "Disaster Recovery & Backups",
+      badge: "Backup",
+      keywords: ["backup", "restore", "disaster", "migration", "data", "tar"],
+    },
+    {
+      id: "updates",
+      category: "Cluster & Operations",
+      title: "Upgrading Shipyard Without Downtime",
+      badge: "Updates",
+      keywords: ["upgrade", "update", "git pull", "docker", "new release"],
+    },
+
+    // Troubleshooting & Error Recovery
+    {
+      id: "selfhost-errors",
+      category: "Troubleshooting & Recovery",
+      title: "The Self-Host Error Reference Guide",
+      badge: "Diagnostic",
+      keywords: ["error", "troubleshooting", "failed", "exit code", "oom", "postgres", "ssl"],
+    },
+    {
+      id: "diagnostic-commands",
+      category: "Troubleshooting & Recovery",
+      title: "Essential CLI Diagnostics Cheat-Sheet",
+      badge: "CLI",
+      keywords: ["commands", "docker logs", "netstat", "journalctl", "lsof", "curl"],
     },
     {
       id: "api-reference",
-      category: "REST API Reference",
-      title: "Interactive System API Reference",
+      category: "Troubleshooting & Recovery",
+      title: "Interactive Live API Diagnostics",
       badge: "Live REST",
       keywords: ["api", "rest", "endpoints", "health", "system", "status"],
-    },
-    {
-      id: "troubleshooting",
-      category: "Operations",
-      title: "Troubleshooting & Runbooks",
-      badge: "Ops",
-      keywords: ["troubleshooting", "logs", "backup", "restore", "recovery", "ports"],
     },
   ];
 
@@ -217,8 +290,8 @@ export default function DocsPage() {
               <span className="font-semibold text-base tracking-tight text-white">
                 Shipyard
               </span>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-medium">
-                Docs
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-950/60 border border-cyan-800/40 text-cyan-300 font-medium">
+                Production Docs
               </span>
             </div>
           </Link>
@@ -229,484 +302,639 @@ export default function DocsPage() {
             href="/"
             className="px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white hover:bg-zinc-800 flex items-center gap-1.5 transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Return to Landing</span>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
           </Link>
+          <a
+            href="https://github.com/RishBroProMax/Shipyard"
+            target="_blank"
+            rel="noreferrer"
+            className="px-3 py-1.5 rounded-md bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:text-white flex items-center gap-1.5 transition-colors"
+          >
+            <span>GitHub</span>
+            <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
+          </a>
         </div>
       </header>
 
-      {/* Main Documentation Shell */}
-      <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col lg:flex-row gap-12">
-        {/* Left-Hand Table of Contents */}
-        <aside className="w-full lg:w-64 shrink-0">
-          <div className="sticky top-24 space-y-6">
-            {/* Search Filter Bar */}
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search documentation..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-zinc-900/80 border border-zinc-800 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
-              />
-            </div>
+      {/* Main Documentation Layout */}
+      <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row gap-8">
+        {/* Sidebar Navigation */}
+        <aside className="w-full md:w-64 shrink-0 space-y-6 md:sticky md:top-24 md:h-[calc(100vh-8rem)] md:overflow-y-auto pr-2">
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search guides, errors, configs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
+          </div>
 
-            {/* Categorized TOC Navigation */}
-            <nav className="space-y-5 max-h-[calc(100vh-180px)] overflow-y-auto pr-1">
-              {Object.entries(categories).map(([catName, items]) => (
-                <div key={catName} className="space-y-1.5">
-                  <div className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider px-2.5">
-                    {catName}
-                  </div>
-                  <div className="space-y-0.5">
-                    {items.map((sec) => (
-                      <a
-                        key={sec.id}
-                        href={`#${sec.id}`}
-                        onClick={() => setActiveSection(sec.id)}
-                        className={`px-2.5 py-1.5 rounded-md text-xs flex items-center justify-between transition-colors ${
-                          activeSection === sec.id
-                            ? "bg-zinc-800 text-white font-medium shadow-sm"
-                            : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-                        }`}
-                      >
-                        <span className="truncate">{sec.title}</span>
-                        {sec.badge && (
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/40 text-zinc-500 border border-zinc-800 shrink-0 ml-1.5">
-                            {sec.badge}
-                          </span>
-                        )}
-                      </a>
-                    ))}
-                  </div>
+          {/* Table of Contents by Category */}
+          <div className="space-y-5 text-xs">
+            {Object.entries(categories).map(([cat, sections]) => (
+              <div key={cat} className="space-y-1.5">
+                <div className="font-semibold text-zinc-400 text-[11px] uppercase tracking-wider px-2">
+                  {cat}
                 </div>
-              ))}
-            </nav>
-
-            <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-850 text-xs space-y-1 text-zinc-400">
-              <div className="text-white font-medium flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Shipyard v1.0.0</span>
+                <div className="space-y-0.5">
+                  {sections.map((sec) => (
+                    <a
+                      key={sec.id}
+                      href={`#${sec.id}`}
+                      onClick={() => setActiveSection(sec.id)}
+                      className={`px-2.5 py-1.5 rounded-md flex items-center justify-between transition-colors group ${
+                        activeSection === sec.id
+                          ? "bg-cyan-950/50 text-cyan-300 border border-cyan-800/40 font-medium"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
+                      }`}
+                    >
+                      <span className="truncate">{sec.title}</span>
+                      {sec.badge && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 group-hover:text-zinc-300 font-mono">
+                          {sec.badge}
+                        </span>
+                      )}
+                    </a>
+                  ))}
+                </div>
               </div>
-              <div className="text-[11px] text-zinc-500">Autonomous Developer Appliance</div>
-            </div>
+            ))}
           </div>
         </aside>
 
-        {/* Right-Hand Documentation Body */}
-        <main className="flex-1 max-w-4xl space-y-16 text-sm text-zinc-300 leading-relaxed font-normal">
-          {/* Section 0: Overview */}
-          <section id="overview" className="space-y-4 scroll-mt-24">
-            <div className="flex items-center gap-2 text-xs text-cyan-400 font-medium">
-              <Anchor className="w-4 h-4" />
-              <span>INTRODUCTION</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-              Overview &amp; Philosophy
-            </h1>
-            <p className="text-base text-zinc-300 leading-relaxed">
-              Shipyard was built on a simple conviction: <strong>developers should be able to deploy software to their own bare-metal servers without becoming full-time DevOps engineers or paying monthly per-seat SaaS tolls.</strong>
-            </p>
-            <p>
-              Traditional PaaS alternatives either lock your data inside proprietary black boxes or demand that you manage complex Kubernetes clusters, ingress controllers, YAML manifests, and fragile database configurations.
-            </p>
-            <p>
-              Shipyard functions as an <strong>autonomous appliance</strong>. When installed on any fresh Linux virtual machine, it inspects the hardware, creates encrypted storage volumes, initializes PostgreSQL 16 and Redis 7, spins up the Caddy reverse proxy, provisions SSL certificates, and begins streaming real-time hardware telemetry—with zero manual intervention.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">Zero Configuration</div>
-                <p className="text-xs text-zinc-400">
-                  No database credentials, environment variable files, or port mapping to configure.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">100% On-Premise</div>
-                <p className="text-xs text-zinc-400">
-                  Your code and database reside on your VPS. Zero third-party telemetry leaks.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">True Dual-Mode</div>
-                <p className="text-xs text-zinc-400">
-                  Deploy to Vercel for public showcase &amp; docs, or install on a VPS for full PaaS.
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 1: Quickstart */}
-          <section id="quickstart" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
+        {/* Content Body */}
+        <main className="flex-1 min-w-0 space-y-16 pb-24 text-sm text-zinc-300 leading-relaxed font-sans">
+          {/* ================================================================
+              SECTION 1: QUICKSTART
+             ================================================================ */}
+          <section id="quickstart" className="space-y-4 scroll-mt-24">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
               <Rocket className="w-4 h-4" />
-              <span>QUICKSTART</span>
+              <span>GETTING STARTED</span>
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               One-Line Appliance Installation
-            </h2>
-            <p>
-              To transform any clean Linux server into a self-contained Shipyard control plane, log in via SSH and run the following command:
+            </h1>
+            <p className="text-zinc-300">
+              Shipyard turns any clean Linux VPS into a self-contained PaaS in under 60 seconds. The installer automatically provisions Docker, sets up isolated PostgreSQL 16 and Redis 7 containers, configures Caddy 2 for automated Let&apos;s Encrypt SSL, and starts the Next.js control plane.
             </p>
 
-            {/* Code Box */}
-            <div className="relative rounded-xl bg-black border border-zinc-800 overflow-hidden shadow-2xl">
-              <div className="px-4 py-2 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-400 font-mono">
-                <span className="text-zinc-200">bash</span>
-                <span>Installs Docker, PostgreSQL 16, Redis 7, Caddy</span>
-              </div>
-              <div className="p-4 font-mono text-xs text-zinc-100 flex items-center justify-between gap-4 overflow-x-auto">
-                <span className="text-cyan-400 font-semibold select-none">$</span>
-                <code className="flex-1 text-zinc-200">{installCmd}</code>
+            <div className="relative p-4 rounded-xl bg-black border border-zinc-800 text-xs font-mono space-y-2">
+              <div className="flex items-center justify-between text-zinc-400 pb-1 border-b border-zinc-900">
+                <span>Interactive VPS Installer (asks for email &amp; password in terminal):</span>
                 <button
-                  onClick={() => copyCode("quickstart", installCmd)}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-200 border border-zinc-700 flex items-center gap-1.5 shrink-0 transition-colors"
+                  onClick={() => copyCode("cmd-quickstart", installCmd)}
+                  className="hover:text-zinc-200 flex items-center gap-1"
                 >
-                  {copiedSection === "quickstart" ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400 font-medium">Copied</span>
-                    </>
+                  {copiedSection === "cmd-quickstart" ? (
+                    <span className="text-emerald-400 font-sans text-[11px]">Copied</span>
                   ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Copy</span>
-                    </>
+                    <Copy className="w-3.5 h-3.5" />
                   )}
                 </button>
               </div>
+              <div className="text-cyan-400 select-all">$ {installCmd}</div>
             </div>
 
-            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-              <div className="text-white font-semibold flex items-center gap-2">
+            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+              <div className="font-semibold text-white flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>What Happens During the 60-Second Setup:</span>
+                <span>Headless / Scripted Mode (CI/CD, cloud-init, Ansible, Terraform)</span>
               </div>
-              <ul className="list-disc pl-5 space-y-1.5 text-zinc-400">
-                <li>Detects and automatically installs Docker Engine and Compose plugins if missing.</li>
-                <li>Creates persistent volumes at <code className="text-zinc-200">/var/lib/shipyard</code>.</li>
-                <li>Generates a 256-bit AES cryptographic encryption key stored in a protected vault.</li>
-                <li>Initializes PostgreSQL 16 and Redis 7 worker queues, executing all initial schema migrations.</li>
-                <li>Creates the initial administrator account (<code className="text-zinc-200">admin@shipyard.local</code>).</li>
-                <li>Launches Caddy 2 reverse proxy and displays the live Dashboard URL.</li>
-              </ul>
+              <p className="text-zinc-400">
+                To bypass interactive prompts and provision unattended nodes, supply CLI flags:
+              </p>
+              <pre className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 overflow-x-auto text-[11px]">
+                {`curl -fsSL ${currentOrigin}/install.sh | bash -s -- \\
+  --email admin@mycompany.com \\
+  --password "MyStrongSecretPass123" \\
+  --port 3000 \\
+  --non-interactive`}
+              </pre>
             </div>
           </section>
 
-          {/* Section 2: Prerequisites */}
+          {/* ================================================================
+              SECTION 2: INTERACTIVE SETUP
+             ================================================================ */}
+          <section id="interactive-setup" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <KeyRound className="w-4 h-4" />
+              <span>SETUP WORKFLOW</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              Interactive Email &amp; Password Prompts
+            </h2>
+            <p>
+              When executed in a terminal, <code className="text-cyan-300 font-mono">install.sh</code> detects the active TTY device (<code className="text-cyan-300 font-mono">/dev/tty</code>) even when piped through <code className="text-cyan-300 font-mono">curl | bash</code>. It safely requests your desired credentials:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="text-white font-semibold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                  <span>Admin Email Prompt</span>
+                </div>
+                <p className="text-zinc-400 font-sans">
+                  Defaults to <code className="text-zinc-200">admin@shipyard.local</code> if left blank, or you can enter your team email address.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="text-white font-semibold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Admin Password Prompt</span>
+                </div>
+                <p className="text-zinc-400 font-sans">
+                  Typing is hidden (<code className="text-zinc-200">stty -echo</code>). If you press Enter without typing a password, Shipyard automatically generates a cryptographically secure 20-character password.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-cyan-950/20 border border-cyan-900/40 text-xs text-cyan-200 space-y-1">
+              <div className="font-semibold text-white">Where are credentials stored?</div>
+              <p>
+                Credentials are saved with restrictive file permissions (<code className="font-mono text-cyan-300">chmod 0600</code>) on the host filesystem at:
+              </p>
+              <code className="block bg-black/60 p-2 rounded text-zinc-300 font-mono">
+                /var/lib/shipyard/data/secrets/shipyard.secret.json
+              </code>
+            </div>
+          </section>
+
+          {/* ================================================================
+              SECTION 3: SYSTEM REQUIREMENTS & SPECS
+             ================================================================ */}
           <section id="prerequisites" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-amber-400 font-medium">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
               <Cpu className="w-4 h-4" />
-              <span>HARDWARE &amp; OS COMPATIBILITY</span>
+              <span>HARDWARE REQUIREMENTS</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Hardware Specifications &amp; OS Support
+              System Specs &amp; Linux Compatibility
             </h2>
-            <p>
-              Shipyard was built with extreme resource efficiency in mind. The core supervisor engine consumes less than 140 MB of idle memory, allowing it to run comfortably on entry-level cloud servers:
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="text-zinc-400 font-medium uppercase text-[10px]">Minimum Memory</div>
-                <div className="text-xl font-bold text-white">1.0 GB RAM</div>
-                <div className="text-zinc-500">Supervisor + DB idle: ~220 MB.</div>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="text-zinc-400 font-medium uppercase text-[10px]">Processor</div>
-                <div className="text-xl font-bold text-white">1 vCPU</div>
-                <div className="text-zinc-500">x86_64 or ARM64 architectures.</div>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="text-zinc-400 font-medium uppercase text-[10px]">Storage</div>
-                <div className="text-xl font-bold text-white">10 GB SSD</div>
-                <div className="text-zinc-500">For OS and Docker images.</div>
-              </div>
-            </div>
-
-            <div className="space-y-2 text-xs text-zinc-400 pt-2">
-              <div className="text-white font-medium">Supported Operating Systems:</div>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "Ubuntu 24.04 / 22.04 / 20.04 LTS",
-                  "Debian 12 (Bookworm) / 11 (Bullseye)",
-                  "CentOS Stream 9",
-                  "Rocky Linux 9",
-                  "AlmaLinux 9",
-                  "Alpine Linux 3.19+",
-                ].map((os, idx) => (
-                  <span key={idx} className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-300">
-                    ✓ {os}
-                  </span>
-                ))}
-              </div>
+            <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-[#0c0d12]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-300 font-semibold">
+                    <th className="p-3.5">Component</th>
+                    <th className="p-3.5">Minimum Requirements</th>
+                    <th className="p-3.5 text-cyan-400">Recommended for Production</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60 font-mono text-zinc-300">
+                  <tr>
+                    <td className="p-3.5 font-sans font-medium text-white">Operating System</td>
+                    <td className="p-3.5">Ubuntu 20.04+, Debian 11+, CentOS 8+</td>
+                    <td className="p-3.5 text-emerald-400">Ubuntu 22.04 LTS or 24.04 LTS</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3.5 font-sans font-medium text-white">Processor (CPU)</td>
+                    <td className="p-3.5">1 vCPU (x86_64 or ARM64)</td>
+                    <td className="p-3.5 text-emerald-400">2 - 4 vCPUs</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3.5 font-sans font-medium text-white">Physical Memory (RAM)</td>
+                    <td className="p-3.5">512 MB (with swap enabled)</td>
+                    <td className="p-3.5 text-emerald-400">2 GB – 4 GB RAM</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3.5 font-sans font-medium text-white">Storage</td>
+                    <td className="p-3.5">10 GB SSD / NVMe</td>
+                    <td className="p-3.5 text-emerald-400">40 GB+ NVMe SSD</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </section>
 
-          {/* Section 3: Dual Modes */}
-          <section id="dual-modes" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-cyan-400 font-medium">
-              <Cloud className="w-4 h-4" />
-              <span>DUAL-MODE ARCHITECTURE</span>
+          {/* ================================================================
+              SECTION 4: LOW-RAM VPS & SWAP GUIDE (CRUCIAL)
+             ================================================================ */}
+          <section id="swap-guide" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold uppercase tracking-wider">
+              <AlertCircle className="w-4 h-4" />
+              <span>CRUCIAL FOR 1GB / 2GB VPS</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              One Unified Repo: Vercel vs Self-Hosted Appliance
+              Low-RAM VPS &amp; Swap Setup (Fix Exit 137 OOM)
             </h2>
             <p>
-              Shipyard is designed to exist in a single repository that automatically adapts its behavior based on the hosting environment:
+              When building modern applications (like Next.js, Webpack, or compiling Rust/Go Docker images), the compiler can momentarily consume 1.2GB–1.8GB of RAM. If your VPS has 1GB RAM without swap, the Linux kernel&apos;s Out-of-Memory Killer will abruptly kill the build process with <code className="text-rose-400 font-mono">exit status 137</code>.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
-                <span className="text-cyan-400 font-semibold text-sm block">▲ Vercel Cloud Mode</span>
-                <p className="text-zinc-400 leading-relaxed">
-                  Automatically activated on Vercel (<code className="text-zinc-200">VERCEL=1</code>) or when <code className="text-zinc-200">SHIPYARD_MODE=public</code>:
-                </p>
-                <ul className="list-disc pl-4 space-y-1.5 text-zinc-400">
-                  <li>Serves the public marketing landing page on <code className="text-zinc-200">/</code>.</li>
-                  <li>Serves technical documentation on <code className="text-zinc-200">/docs</code>.</li>
-                  <li>Dynamically generates bash installer scripts on <code className="text-zinc-200">/install.sh</code>.</li>
-                  <li>Build pipeline never fails due to missing PostgreSQL or Docker engines.</li>
-                </ul>
-              </div>
-
-              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
-                <span className="text-emerald-400 font-semibold text-sm block">⚓ Self-Hosted Appliance Mode</span>
-                <p className="text-zinc-400 leading-relaxed">
-                  Activated on your Linux VPS (<code className="text-zinc-200">SHIPYARD_MODE=appliance</code>):
-                </p>
-                <ul className="list-disc pl-4 space-y-1.5 text-zinc-400">
-                  <li>Root route serves the full PaaS Control Plane (Dashboard, Workloads, Servers).</li>
-                  <li>Directly manages Docker Engine containers, builds, and sandboxes.</li>
-                  <li>Configures Caddy dynamic reverse proxy and auto Let&apos;s Encrypt SSL.</li>
-                  <li>Zero mock data: real-time hardware telemetry measured via OS kernel.</li>
-                </ul>
-              </div>
+            <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-900/40 text-xs space-y-2">
+              <div className="font-semibold text-amber-300">Run this 3-command recipe to create a 2GB swap file:</div>
+              <pre className="p-3 bg-black rounded border border-zinc-800 text-zinc-200 overflow-x-auto font-mono text-[11px]">
+{`sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab`}
+              </pre>
+              <p className="text-zinc-400 text-[11px]">
+                Verify with <code className="text-zinc-200">free -h</code>. You will now see 2.0Gi of swap available, completely eliminating OOM 137 build crashes!
+              </p>
             </div>
           </section>
 
-          {/* Section 4: Supervisor */}
-          <section id="supervisor" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-purple-400 font-medium">
-              <Zap className="w-4 h-4" />
-              <span>SUPERVISOR ENGINE</span>
+          {/* ================================================================
+              SECTION 5: ARCHITECTURE OVERVIEW
+             ================================================================ */}
+          <section id="overview" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <Layers className="w-4 h-4" />
+              <span>CORE ARCHITECTURE</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Supervisor State Engine &amp; Zero-Config Lifecycle
+              Architecture Overview &amp; Philosophy
             </h2>
             <p>
-              The Shipyard supervisor coordinates startup, database schema migrations, and service heartbeats through a deterministic 6-phase state machine:
+              Shipyard is engineered with zero runtime magic. It uses native industry-standard tools instead of proprietary daemon layers:
+            </p>
+            <ul className="list-disc pl-5 space-y-2 text-xs text-zinc-300">
+              <li><strong className="text-white">Docker Engine:</strong> Provides sandboxing and process isolation.</li>
+              <li><strong className="text-white">Caddy 2 Reverse Proxy:</strong> Hot-reloads routes without dropping TCP connections, automatically handling HTTP/3 QUIC and ACME Let&apos;s Encrypt issuance.</li>
+              <li><strong className="text-white">PostgreSQL 16 &amp; JSON Store:</strong> Dual storage with automated fallback ensures zero database lockups or boot failures.</li>
+              <li><strong className="text-white">Redis 7:</strong> Background event queues and session cache.</li>
+            </ul>
+          </section>
+
+          {/* ================================================================
+              SECTION 6: FIREWALL RULES & PORT MATRIX
+             ================================================================ */}
+          <section id="firewall-ports" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <Network className="w-4 h-4" />
+              <span>NETWORK CONFIGURATION</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              Firewall Rules &amp; Port Matrix
+            </h2>
+            <p>
+              Ensure the following ports are open on your host firewall (UFW / iptables) and cloud provider security group (Hetzner, AWS EC2, DigitalOcean):
             </p>
 
-            <div className="p-5 rounded-xl bg-black border border-zinc-800 font-mono text-xs space-y-2 text-zinc-300">
-              <div className="text-zinc-500">// Supervisor Autonomous Startup Sequence:</div>
-              <div className="text-cyan-400">[PHASE 1] Checking host environment, Docker socket, and /var/lib/shipyard</div>
-              <div className="text-zinc-400">[PHASE 2] Initializing AES-256 vault encryption key &amp; JWT secrets</div>
-              <div className="text-zinc-400">[PHASE 3] Connecting to PostgreSQL 16 &amp; executing database migrations</div>
-              <div className="text-zinc-400">[PHASE 4] Spawning Redis 7 worker queue &amp; Caddy dynamic reverse proxy</div>
-              <div className="text-zinc-400">[PHASE 5] Seeding initial admin account &amp; Local Host worker node</div>
-              <div className="text-emerald-400 font-bold">[PHASE 6] Appliance READY &rarr; Listening on 0.0.0.0:3000</div>
+            <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-[#0c0d12]">
+              <table className="w-full text-left text-xs border-collapse font-mono">
+                <thead>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/60 text-zinc-300 font-semibold">
+                    <th className="p-3">Port</th>
+                    <th className="p-3">Protocol</th>
+                    <th className="p-3">Service / Purpose</th>
+                    <th className="p-3">Visibility</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
+                  <tr>
+                    <td className="p-3 text-cyan-400">80</td>
+                    <td className="p-3">TCP</td>
+                    <td className="p-3 font-sans">HTTP &amp; Let&apos;s Encrypt ACME challenge verification</td>
+                    <td className="p-3 text-emerald-400 font-sans">Public (Required)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-cyan-400">443</td>
+                    <td className="p-3">TCP / UDP</td>
+                    <td className="p-3 font-sans">HTTPS &amp; HTTP/3 QUIC client traffic</td>
+                    <td className="p-3 text-emerald-400 font-sans">Public (Required)</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-cyan-400">3000</td>
+                    <td className="p-3">TCP</td>
+                    <td className="p-3 font-sans">Shipyard Web Dashboard UI (control plane)</td>
+                    <td className="p-3 font-sans text-zinc-400">Public or VPN</td>
+                  </tr>
+                  <tr>
+                    <td className="p-3 text-cyan-400">30000–39999</td>
+                    <td className="p-3">TCP</td>
+                    <td className="p-3 font-sans">Internal workload containers (routed via Caddy)</td>
+                    <td className="p-3 text-zinc-500 font-sans">Internal only</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2 text-xs">
+              <div className="font-semibold text-white">Recommended UFW setup command:</div>
+              <pre className="p-3 bg-black rounded border border-zinc-800 text-zinc-200 font-mono text-[11px]">
+{`sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 443/udp
+sudo ufw allow 3000/tcp
+sudo ufw enable`}
+              </pre>
             </div>
           </section>
 
-          {/* Section 5: Telemetry */}
-          <section id="telemetry" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-              <Activity className="w-4 h-4" />
-              <span>REAL HARDWARE TELEMETRY</span>
+          {/* ================================================================
+              SECTION 7: RESOLVING PORT 80 & 443 CONFLICTS
+             ================================================================ */}
+          <section id="port-conflicts" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-rose-400 font-semibold uppercase tracking-wider">
+              <AlertTriangle className="w-4 h-4" />
+              <span>CONFLICT RESOLUTION</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Zero-Mock Real Hardware Telemetry
+              Resolving Port 80 &amp; 443 Conflicts
             </h2>
             <p>
-              Shipyard does not use placeholder or mock metrics. All telemetry shown in the dashboard is sampled directly from the Linux kernel:
+              If your VPS previously had Apache, Nginx, or another web server installed, Caddy will fail to bind with:
+              <br />
+              <code className="text-rose-400 font-mono text-xs">bind: address already in use :80 / :443</code>.
+            </p>
+
+            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
+              <div className="font-semibold text-white">Step 1: Check what is occupying port 80 / 443</div>
+              <pre className="p-2.5 bg-black rounded border border-zinc-800 text-cyan-300 font-mono text-[11px]">
+sudo lsof -i :80 -i :443
+# OR
+sudo netstat -tulpn | grep -E ":(80|443)"
+              </pre>
+
+              <div className="font-semibold text-white pt-2">Step 2: Stop and disable the conflicting services</div>
+              <pre className="p-2.5 bg-black rounded border border-zinc-800 text-cyan-300 font-mono text-[11px]">
+# If Apache is running:
+sudo systemctl stop apache2 && sudo systemctl disable apache2
+
+# If standalone Nginx is running:
+sudo systemctl stop nginx && sudo systemctl disable nginx
+              </pre>
+
+              <div className="font-semibold text-white pt-2">Step 3: Restart Shipyard Caddy proxy container</div>
+              <pre className="p-2.5 bg-black rounded border border-zinc-800 text-emerald-400 font-mono text-[11px]">
+cd /var/lib/shipyard/source
+docker compose restart shipyard-proxy
+              </pre>
+            </div>
+          </section>
+
+          {/* ================================================================
+              SECTION 8: CADDY DYNAMIC PROXY & AUTO-SSL
+             ================================================================ */}
+          <section id="reverse-proxy" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold uppercase tracking-wider">
+              <ShieldCheck className="w-4 h-4" />
+              <span>SSL &amp; PROXY</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              Dynamic Caddy Proxy, Custom Domains &amp; Cloudflare
+            </h2>
+            <p>
+              Every time you add a custom domain to a project in the Shipyard dashboard, Shipyard writes the route to <code className="text-cyan-300 font-mono">/var/lib/shipyard/data/caddy/Caddyfile</code> and triggers a non-disruptive hot-reload.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
-                <span className="text-cyan-400 font-semibold block">CPU Load Calculation</span>
-                <p className="text-zinc-400 leading-relaxed">
-                  Samples <code className="text-zinc-200">os.cpus()</code> user/system/idle ticks across 100ms delta windows to compute exact CPU utilization per core.
+                <div className="font-semibold text-white">Direct DNS (Standard)</div>
+                <p className="text-zinc-400">
+                  Create an <strong className="text-zinc-200">A Record</strong> pointing your domain (e.g., <code className="text-cyan-300">api.domain.com</code>) to your VPS IP address. Let&apos;s Encrypt will automatically issue valid certificates in &lt;10 seconds.
                 </p>
               </div>
+
               <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
-                <span className="text-emerald-400 font-semibold block">Memory &amp; Swap</span>
-                <p className="text-zinc-400 leading-relaxed">
-                  Reads real kernel byte allocations via <code className="text-zinc-200">os.totalmem()</code> and <code className="text-zinc-200">os.freemem()</code> with byte-perfect precision.
+                <div className="font-semibold text-white">Using Cloudflare DNS &amp; CDN</div>
+                <p className="text-zinc-400">
+                  If using Cloudflare with Orange Cloud (Proxy enabled), set your Cloudflare SSL/TLS encryption mode to <strong className="text-cyan-300">Full (Strict)</strong>. Setting it to Flexible will cause redirect loop errors!
                 </p>
               </div>
             </div>
           </section>
 
-          {/* Section 6: Deploy Git */}
-          <section id="deploy-git" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-emerald-400 font-medium">
-              <GitBranch className="w-4 h-4" />
-              <span>DEPLOYING APPLICATIONS</span>
+          {/* ================================================================
+              SECTION 9: ADMIN PASSWORD RESET RUNBOOK
+             ================================================================ */}
+          <section id="password-reset" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <KeyRound className="w-4 h-4" />
+              <span>OPERATIONS</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Deploying via Git Push Webhooks
+              Resetting Forgotten Admin Passwords
             </h2>
             <p>
-              Shipyard provides zero-downtime automated deployments triggered directly by your Git provider:
+              If you ever forget your admin login or get locked out, you can instantly reset the password from your VPS terminal using our built-in appliance tool:
             </p>
 
-            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 text-xs">
-              <div className="text-white font-semibold">Configuring GitHub / GitLab Webhooks:</div>
-              <ol className="list-decimal pl-5 space-y-2 text-zinc-400">
-                <li>Navigate to your GitHub repository &rarr; <strong>Settings</strong> &rarr; <strong>Webhooks</strong>.</li>
-                <li>Click <strong>Add webhook</strong>.</li>
-                <li>Set Payload URL to: <code className="text-zinc-200 font-mono">{currentOrigin}/api/webhooks/github</code></li>
-                <li>Set Content type to: <code className="text-zinc-200 font-mono">application/json</code></li>
-                <li>Select &quot;Just the push event&quot; and save.</li>
-              </ol>
+            <div className="p-4 rounded-xl bg-black border border-zinc-800 text-xs font-mono space-y-2">
+              <div className="text-zinc-400">// Run on the host VPS:</div>
+              <div className="text-cyan-400">
+                cd /var/lib/shipyard/source
+              </div>
+              <div className="text-cyan-400">
+                node scripts/init-appliance.js --reset-password &lt;admin-email&gt; &lt;new-password&gt;
+              </div>
             </div>
-
             <p className="text-xs text-zinc-400">
-              When a push occurs, Shipyard clones the repository into an isolated Docker build sandbox, runs database migrations, compiles production bundles, performs an HTTP health check, and shifts proxy traffic with 0ms downtime.
+              This command directly calculates a new salt, hashes the password via bcrypt (cost factor 12), invalidates all existing sessions for safety, and updates the local credentials file.
             </p>
           </section>
 
-          {/* Section 7: In-Browser File Studio */}
-          <section id="deploy-files" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-purple-400 font-medium">
-              <FileCode className="w-4 h-4" />
-              <span>DEVELOPER STUDIO</span>
+          {/* ================================================================
+              SECTION 10: DISASTER RECOVERY & BACKUPS
+             ================================================================ */}
+          <section id="backup-recovery" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <HardDrive className="w-4 h-4" />
+              <span>DISASTER RECOVERY</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              In-Browser File Studio &amp; Static Apps
+              3-Minute Backup, Restore &amp; Migration
             </h2>
             <p>
-              You do not need a Git repository to deploy with Shipyard. The built-in File Studio lets you drag and drop raw files or write code in your browser:
+              Because Shipyard is fully self-contained in <code className="text-cyan-300 font-mono">/var/lib/shipyard/data</code>, migration to a new server or taking disaster recovery snapshots is trivial:
             </p>
 
-            <ul className="list-disc pl-5 space-y-2 text-xs text-zinc-400">
-              <li>Upload multi-file bundles including <code className="text-zinc-200">.html, .css, .js, .json, .svg, .png</code>.</li>
-              <li>Edit files in real time with syntax highlighting and automated indentation.</li>
-              <li>Click &quot;Save &amp; Redeploy&quot; to instantaneously update live containers in under 250ms.</li>
-              <li>Static apps are served with HTTP/2 and Brotli compression through the dynamic Caddy reverse proxy.</li>
-            </ul>
-          </section>
+            <div className="space-y-3 text-xs font-mono">
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
+                <div className="text-white font-semibold font-sans">To Create a Full Backup Archive:</div>
+                <pre className="p-2.5 bg-black rounded border border-zinc-800 text-cyan-300 text-[11px]">
+sudo tar -czvf /root/shipyard-backup-$(date +%F).tar.gz /var/lib/shipyard/data
+                </pre>
+              </div>
 
-          {/* Section 8: Dockerfiles */}
-          <section id="deploy-docker" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-blue-400 font-medium">
-              <Boxes className="w-4 h-4" />
-              <span>CUSTOM CONTAINERS</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Custom Dockerfiles &amp; Multi-Language Support
-            </h2>
-            <p>
-              Shipyard automatically detects the runtime of your application:
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1">
-                <span className="font-semibold text-white">Dockerfile First</span>
-                <p className="text-zinc-400">If a Dockerfile is present, Shipyard builds it directly.</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1">
-                <span className="font-semibold text-white">Node.js / Next.js</span>
-                <p className="text-zinc-400">Detects <code className="text-zinc-200">package.json</code> and builds with Node 20 LTS.</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1">
-                <span className="font-semibold text-white">Python / Flask / FastAPI</span>
-                <p className="text-zinc-400">Detects <code className="text-zinc-200">requirements.txt</code> and runs Gunicorn / Uvicorn.</p>
-              </div>
-              <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1">
-                <span className="font-semibold text-white">Static Web</span>
-                <p className="text-zinc-400">Detects <code className="text-zinc-200">index.html</code> and serves via Caddy static engine.</p>
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
+                <div className="text-white font-semibold font-sans">To Restore on a Fresh Server:</div>
+                <pre className="p-2.5 bg-black rounded border border-zinc-800 text-emerald-400 text-[11px]">
+sudo mkdir -p /var/lib/shipyard
+sudo tar -xzvf /root/shipyard-backup-*.tar.gz -C /
+curl -fsSL https://shipyard.example/install.sh | bash
+                </pre>
               </div>
             </div>
           </section>
 
-          {/* Section 9: Worker Nodes */}
-          <section id="worker-nodes" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-amber-400 font-medium">
-              <Server className="w-4 h-4" />
-              <span>CLUSTER SCALING</span>
+          {/* ================================================================
+              SECTION 11: THE DEFINITIVE ERROR REFERENCE GUIDE
+             ================================================================ */}
+          <section id="selfhost-errors" className="space-y-6 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-rose-400 font-semibold uppercase tracking-wider">
+              <AlertCircle className="w-4 h-4" />
+              <span>SELF-HOST TROUBLESHOOTING</span>
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Connecting Remote Worker Nodes
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              The Self-Host Error Reference &amp; Recovery Guide
             </h2>
             <p>
-              Scale horizontally across multiple cloud providers or on-premise servers with one command:
+              Diagnose and solve every known edge-case and environment fault with verified terminal recipes.
             </p>
 
-            <div className="relative rounded-xl bg-black border border-zinc-800 p-4 font-mono text-xs text-zinc-100 flex items-center justify-between gap-4 overflow-x-auto">
-              <span className="text-amber-400 font-semibold select-none">$</span>
-              <code className="flex-1 text-zinc-200">{agentCmd}</code>
-              <button
-                onClick={() => copyCode("agent", agentCmd)}
-                className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-200 border border-zinc-700 flex items-center gap-1.5 shrink-0 transition-colors"
-              >
-                {copiedSection === "agent" ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-emerald-400 font-medium">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
+            <div className="space-y-4 text-xs">
+              {/* Error 1: Port bind */}
+              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-400 font-mono text-sm">
+                    ERROR: bind: address already in use (80 / 443)
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-rose-950 text-rose-300 text-[10px]">High Frequency</span>
+                </div>
+                <p className="text-zinc-400">
+                  <strong className="text-zinc-200">Root Cause:</strong> Apache, default Nginx, or an old Caddy process is already holding TCP port 80 or 443.
+                </p>
+                <div className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+                  # Find process PID: <br />
+                  sudo lsof -i :80 -i :443 <br />
+                  # Disable conflicting web servers: <br />
+                  sudo systemctl stop apache2 nginx 2&gt;/dev/null || true <br />
+                  sudo systemctl disable apache2 nginx 2&gt;/dev/null || true <br />
+                  cd /var/lib/shipyard/source &amp;&amp; docker compose restart shipyard-proxy
+                </div>
+              </div>
+
+              {/* Error 2: Docker Socket Permission */}
+              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-400 font-mono text-sm">
+                    ERROR: permission denied while connecting to Docker daemon socket
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Permission</span>
+                </div>
+                <p className="text-zinc-400">
+                  <strong className="text-zinc-200">Root Cause:</strong> The active user does not belong to the <code className="text-zinc-200">docker</code> group or <code className="text-zinc-200">/var/run/docker.sock</code> permissions are restricted.
+                </p>
+                <div className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+                  sudo usermod -aG docker $USER <br />
+                  sudo chmod 666 /var/run/docker.sock
+                </div>
+              </div>
+
+              {/* Error 3: Build killed exit 137 */}
+              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-400 font-mono text-sm">
+                    ERROR: build failed with exit status 137 (OOM Killer)
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-300 text-[10px]">Memory Exhaustion</span>
+                </div>
+                <p className="text-zinc-400">
+                  <strong className="text-zinc-200">Root Cause:</strong> The VPS ran out of physical memory during compilation and the Linux kernel terminated the process.
+                </p>
+                <div className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+                  # Enable 2GB swap space: <br />
+                  sudo fallocate -l 2G /swapfile &amp;&amp; sudo chmod 600 /swapfile &amp;&amp; sudo mkswap /swapfile &amp;&amp; sudo swapon /swapfile
+                </div>
+              </div>
+
+              {/* Error 4: PostgreSQL startup */}
+              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-400 font-mono text-sm">
+                    ERROR: PostgreSQL connection refused / pg_isready timeout
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Database</span>
+                </div>
+                <p className="text-zinc-400">
+                  <strong className="text-zinc-200">Root Cause:</strong> Database volume initialization permissions or old lock file in postgres data volume.
+                </p>
+                <div className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+                  # Inspect postgres container logs: <br />
+                  cd /var/lib/shipyard/source &amp;&amp; docker compose logs shipyard-db <br />
+                  # Reset postgres container if corrupt: <br />
+                  docker compose restart shipyard-db
+                </div>
+              </div>
+
+              {/* Error 5: ACME Challenge Failure */}
+              <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-400 font-mono text-sm">
+                    ERROR: ACME challenge failed / Let&apos;s Encrypt rate limit or timeout
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">Certificates</span>
+                </div>
+                <p className="text-zinc-400">
+                  <strong className="text-zinc-200">Root Cause:</strong> Port 80 is blocked by a firewall, DNS A-record has not propagated, or Cloudflare SSL is set to Flexible.
+                </p>
+                <div className="p-3 bg-black rounded border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+                  # Verify domain resolves to this VPS: <br />
+                  dig +short A yourdomain.com <br />
+                  # Verify port 80 is reachable from the outside world: <br />
+                  curl -I http://yourdomain.com/.well-known/acme-challenge/test
+                </div>
+              </div>
             </div>
-
-            <p className="text-xs text-zinc-400">
-              The agent creates an <strong>outbound-only TLS connection</strong> back to the leader node. You never need to open inbound firewall ports on your worker machines.
-            </p>
           </section>
 
-          {/* Section 10: Reverse Proxy & SSL */}
-          <section id="reverse-proxy" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-blue-400 font-medium">
-              <Globe className="w-4 h-4" />
-              <span>NETWORKING &amp; SSL</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Dynamic Reverse Proxy &amp; Automatic SSL
-            </h2>
-            <p>
-              Shipyard allocates non-conflicting internal container ports from the range <code className="text-zinc-200 font-mono">30000-39999</code>. It connects each workload dynamically to the embedded Caddy reverse proxy.
-            </p>
-            <p>
-              When you add a custom domain (e.g. <code className="text-zinc-200 font-mono">app.yourdomain.com</code>), point an A-record to your server IP. Caddy automatically requests and renews Let&apos;s Encrypt TLS certificates without manual certbot configuration.
-            </p>
-          </section>
-
-          {/* Section 11: Security Vault */}
-          <section id="security-vault" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-rose-400 font-medium">
-              <Lock className="w-4 h-4" />
-              <span>SECURITY &amp; ENCRYPTION</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              AES-256-GCM Vault &amp; Rootless Docker
-            </h2>
-            <p>
-              All sensitive environment variables, database passwords, and cluster tokens are encrypted at rest using AES-256-GCM authenticated ciphers. Workloads execute inside isolated rootless Docker containers to prevent privilege escalation.
-            </p>
-          </section>
-
-          {/* Section 12: REST API Reference */}
-          <section id="api-reference" className="space-y-6 scroll-mt-24 border-t border-zinc-800/80 pt-12">
-            <div className="flex items-center gap-2 text-xs text-cyan-400 font-medium">
+          {/* ================================================================
+              SECTION 12: ESSENTIAL CLI DIAGNOSTIC CHEAT SHEET
+             ================================================================ */}
+          <section id="diagnostic-commands" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
               <Terminal className="w-4 h-4" />
-              <span>REST API REFERENCE</span>
+              <span>OPERATIONS TOOLKIT</span>
             </div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Interactive System API Reference
+              Essential CLI Diagnostics Cheat-Sheet
+            </h2>
+            <div className="divide-y divide-zinc-800 border border-zinc-800 rounded-xl overflow-hidden bg-[#0c0d12] text-xs font-mono">
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-zinc-500 font-sans mr-2">Stream app logs:</span>
+                  <span className="text-white">docker compose -f /var/lib/shipyard/source/docker-compose.yml logs -f shipyard-app</span>
+                </div>
+              </div>
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-zinc-500 font-sans mr-2">Check proxy logs:</span>
+                  <span className="text-white">docker compose -f /var/lib/shipyard/source/docker-compose.yml logs -f shipyard-proxy</span>
+                </div>
+              </div>
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-zinc-500 font-sans mr-2">Check appliance health:</span>
+                  <span className="text-white">curl -s http://localhost:3000/api/health | jq .</span>
+                </div>
+              </div>
+              <div className="p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-zinc-500 font-sans mr-2">Worker agent status:</span>
+                  <span className="text-white">sudo systemctl status shipyard-agent</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ================================================================
+              SECTION 13: LIVE REST API EXPLORER
+             ================================================================ */}
+          <section id="api-reference" className="space-y-6 scroll-mt-24 border-t border-zinc-800/80 pt-12">
+            <div className="flex items-center gap-2 text-xs text-cyan-400 font-semibold uppercase tracking-wider">
+              <Activity className="w-4 h-4" />
+              <span>LIVE INTERACTION</span>
+            </div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              Interactive System API Diagnostics
             </h2>
             <p>
-              Test live Shipyard endpoints directly from this documentation page:
+              Execute real live queries against your Shipyard control plane right here:
             </p>
 
             <div className="space-y-4 text-xs font-mono">
-              {/* Endpoint 1: Healthcheck */}
+              {/* Endpoint 1: Health */}
               <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -718,14 +946,14 @@ export default function DocsPage() {
                   <button
                     onClick={() => testEndpoint("/api/health", "health")}
                     disabled={apiLoading["health"]}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-zinc-950 font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>{apiLoading["health"] ? "Fetching..." : "Test Endpoint"}</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>{apiLoading["health"] ? "Testing..." : "Test Health Endpoint"}</span>
                   </button>
                 </div>
                 <div className="text-zinc-400 text-[11px] font-sans">
-                  Returns cluster health, uptime, and database connection status.
+                  Returns cluster health status, uptime, host architecture, and online node counts.
                 </div>
                 {apiResponse["health"] && (
                   <pre className="p-3.5 rounded-lg bg-black border border-zinc-800 text-emerald-400 overflow-x-auto text-[11px]">
@@ -734,7 +962,7 @@ export default function DocsPage() {
                 )}
               </div>
 
-              {/* Endpoint 2: System Status */}
+              {/* Endpoint 2: Status */}
               <div className="p-5 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -746,52 +974,20 @@ export default function DocsPage() {
                   <button
                     onClick={() => testEndpoint("/api/system/status", "status")}
                     disabled={apiLoading["status"]}
-                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-zinc-950 font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>{apiLoading["status"] ? "Fetching..." : "Test Endpoint"}</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>{apiLoading["status"] ? "Testing..." : "Test Status Endpoint"}</span>
                   </button>
                 </div>
                 <div className="text-zinc-400 text-[11px] font-sans">
-                  Returns live hardware telemetry: CPU load, RAM usage, storage bytes, and active processes.
+                  Returns real host telemetry: CPU load, RAM allocation, storage, and active Caddy proxy routes.
                 </div>
                 {apiResponse["status"] && (
                   <pre className="p-3.5 rounded-lg bg-black border border-zinc-800 text-cyan-400 overflow-x-auto text-[11px]">
                     {apiResponse["status"]}
                   </pre>
                 )}
-              </div>
-            </div>
-          </section>
-
-          {/* Section 13: Troubleshooting */}
-          <section id="troubleshooting" className="space-y-4 scroll-mt-24 border-t border-zinc-800/80 pt-12 pb-16">
-            <div className="flex items-center gap-2 text-xs text-rose-400 font-medium">
-              <HelpCircle className="w-4 h-4" />
-              <span>TROUBLESHOOTING &amp; RUNBOOKS</span>
-            </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Troubleshooting &amp; Operations
-            </h2>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">How do I view live supervisor logs on the server?</div>
-                <p className="text-zinc-400 font-mono text-[11px]">
-                  docker logs -f shipyard-supervisor
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">Where is application data persisted?</div>
-                <p className="text-zinc-400">
-                  All databases, build caches, and encrypted secrets are stored in <code className="text-zinc-200 font-mono">/var/lib/shipyard</code>. Backing up this single directory backs up your entire PaaS.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-1.5">
-                <div className="font-semibold text-white">What if ports 80 or 443 are already in use?</div>
-                <p className="text-zinc-400">
-                  If another web server (e.g. Apache or Nginx) is running, stop it with <code className="text-zinc-200 font-mono">systemctl stop nginx</code> so Caddy can automatically manage incoming HTTP/HTTPS traffic.
-                </p>
               </div>
             </div>
           </section>

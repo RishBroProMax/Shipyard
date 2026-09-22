@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Shipyard PaaS — Zero-Configuration Self-Hosted VPS Appliance Installer
+# ⚓ Shipyard PaaS — Next-Gen Self-Hosted Developer Appliance Installer
 #
-# Interactive usage (terminal prompt for email & admin password):
+# Interactive usage (guided terminal prompt for email & admin password):
 #   curl -fsSL https://shipyard.example/install.sh | bash
 #
 # Headless / Scripted usage (CI/CD, cloud-init, Ansible):
 #   curl -fsSL https://shipyard.example/install.sh | bash -s -- \
 #     --email admin@mycompany.com \
-#     --password mySecurePassword \
+#     --password "mySecurePassword" \
 #     --port 3000 \
 #     --non-interactive
 #
 # Supported OS: Ubuntu 20.04+, Debian 11+, CentOS 8+, Rocky Linux 8+, AlmaLinux 8+
-# Minimum requirements: 1 CPU, 512MB RAM (2GB+ recommended for builds)
+# Minimum requirements: 1 CPU, 512MB RAM (2GB+ recommended)
 # ==============================================================================
 
 set -euo pipefail
 
-# ── Colors ────────────────────────────────────────────────────────────────────
+# ── Colors & Formats ──────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
@@ -60,8 +62,6 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # ── Terminal & TTY Detection for Interactive Prompts ─────────────────────────
-# When piped via `curl ... | bash` or `sh`, stdin is the curl stream.
-# To interact with the administrator, we read directly from /dev/tty.
 TTY_DEV=""
 if [ -r /dev/tty ] && [ -w /dev/tty ]; then
     TTY_DEV="/dev/tty"
@@ -73,25 +73,70 @@ if [ -z "$TTY_DEV" ] || [ "${CI:-}" = "true" ] || [ "${DEBIAN_FRONTEND:-}" = "no
     NON_INTERACTIVE=true
 fi
 
-# ── Interactive Setup Prompt ─────────────────────────────────────────────────
-if [ "$NON_INTERACTIVE" = false ]; then
-    echo -e "${CYAN}${BOLD}"
-    cat << "BANNER"
-  ____  _     _                         _
- / ___|| |__ (_) _ __  _   _  __ _ _ __| |
- \___ \| '_ \| || '_ \| | | |/ _` | '__| |
-  ___) | | | | || |_) | |_| | (_| | |  |_|
- |____/|_| |_|_|| .__/ \__, |\__,_|_|  (_)
-                |_|    |___/
- Zero-Configuration Self-Hosted Developer Platform (PaaS)
+# ── Cyberpunk ASCII Banner ───────────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}"
+cat << "BANNER"
+  ███████╗██╗  ██╗██╗██████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗ 
+  ██╔════╝██║  ██║██║██╔══██╗╚██╗ ██╔╝██╔══██╗██╔══██╗██╔══██╗
+  ███████╗███████║██║██████╔╝ ╚████╔╝ ███████║██████╔╝██║  ██║
+  ╚════██║██╔══██║██║██╔═══╝   ╚██╔╝  ██╔══██║██╔══██╗██║  ██║
+  ███████║██║  ██║██║██║        ██║   ██║  ██║██║  ██║██████╔╝
+  ╚══════╝╚═╝  ╚═╝╚═╝╚═╝        ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ 
 BANNER
-    echo -e "${NC}"
-    echo -e "${BLUE}${BOLD}┌─────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${BLUE}${BOLD}│       Shipyard PaaS — Initial Setup Configuration           │${NC}"
-    echo -e "${BLUE}${BOLD}└─────────────────────────────────────────────────────────────┘${NC}"
-    echo ""
+echo -e "       ${MAGENTA}${BOLD}⚓ ZERO-CONFIGURATION SELF-HOSTED PAAS APPLIANCE${NC}"
+echo -e "       ${DIM}Automatic SSL · Docker Orchestration · Real Telemetry · Full Autonomy${NC}\n"
 
-    # Prompt for Admin Email if not passed via flags
+# ── Hardware & Environment Probing ───────────────────────────────────────────
+echo -e "${BLUE}▶ Probing Host System Hardware...${NC}"
+CPU_CORES=$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo "1")
+ARCH=$(uname -m 2>/dev/null || echo "x86_64")
+TOTAL_MEM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "1048576")
+TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024))
+SWAP_TOTAL_KB=$(grep SwapTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "0")
+SWAP_TOTAL_MB=$((SWAP_TOTAL_KB / 1024))
+
+echo -e "  CPU Architecture:  ${GREEN}${ARCH} (${CPU_CORES} Core(s))${NC}"
+echo -e "  Physical Memory:   ${GREEN}${TOTAL_MEM_MB} MB RAM${NC}"
+if [ "$SWAP_TOTAL_MB" -gt 0 ]; then
+    echo -e "  Swap Space:        ${GREEN}${SWAP_TOTAL_MB} MB Swap Active${NC}"
+else
+    echo -e "  Swap Space:        ${YELLOW}None detected (Recommended to add swap if RAM <= 2GB)${NC}"
+fi
+
+# Detect root / sudo
+SUDO=""
+if [ "$EUID" -ne 0 ]; then
+    if ! command -v sudo &>/dev/null; then
+        echo -e "${RED}Error: Please run as root, or install sudo first.${NC}"
+        exit 1
+    fi
+    SUDO="sudo"
+fi
+
+# Detect OS Package Manager
+if command -v apt-get &>/dev/null; then
+    PKG_MANAGER="apt"
+    OS_NAME="Debian/Ubuntu"
+elif command -v yum &>/dev/null; then
+    PKG_MANAGER="yum"
+    OS_NAME="RHEL/CentOS"
+elif command -v dnf &>/dev/null; then
+    PKG_MANAGER="dnf"
+    OS_NAME="Fedora/Rocky"
+else
+    PKG_MANAGER="apt"
+    OS_NAME="Generic Linux"
+fi
+echo -e "  Operating System:  ${GREEN}${OS_NAME}${NC}\n"
+
+# ── Interactive Setup Configuration ───────────────────────────────────────────
+if [ "$NON_INTERACTIVE" = false ]; then
+    echo -e "${BLUE}${BOLD}┌─────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${BLUE}${BOLD}│       🔐 SHIPYARD PAAS — SECURE APPLIANCE SETUP             │${NC}"
+    echo -e "${BLUE}${BOLD}└─────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${DIM}  Configure your administrator credentials for the web panel.${NC}\n"
+
+    # Prompt for Admin Email
     if [ "$EMAIL_EXPLICIT" = false ]; then
         DEFAULT_EMAIL="admin@shipyard.local"
         printf "  %bAdmin Email%b [%s]: " "${BOLD}" "${NC}" "${DEFAULT_EMAIL}" > "$TTY_DEV"
@@ -101,11 +146,10 @@ BANNER
         else
             ADMIN_EMAIL="$DEFAULT_EMAIL"
         fi
-        echo -e "  Using admin email: ${GREEN}${ADMIN_EMAIL}${NC}"
-        echo ""
+        echo -e "  Using admin email: ${GREEN}${ADMIN_EMAIL}${NC}\n"
     fi
 
-    # Prompt for Admin Password if not passed via flags
+    # Prompt for Admin Password
     if [ "$PASSWORD_EXPLICIT" = false ]; then
         while true; do
             printf "  %bAdmin Password%b (leave empty to auto-generate secure password): " "${BOLD}" "${NC}" > "$TTY_DEV"
@@ -118,7 +162,7 @@ BANNER
             if [ -z "$INPUT_PASS" ]; then
                 ADMIN_PASSWORD=$(openssl rand -base64 18 2>/dev/null | tr -dc 'A-Za-z0-9!@#$%^&*' | head -c 20 || \
                                 tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 20)
-                echo -e "  ${YELLOW}✓ Auto-generating cryptographically secure administrator password.${NC}"
+                echo -e "  ${YELLOW}✓ Auto-generating cryptographically secure 20-character password.${NC}\n"
                 break
             fi
 
@@ -135,15 +179,14 @@ BANNER
             echo "" > "$TTY_DEV"
 
             if [ "$INPUT_PASS" != "$CONFIRM_PASS" ]; then
-                echo -e "  ${RED}⚠ Passwords do not match. Please try again.${NC}"
+                echo -e "  ${RED}⚠ Passwords do not match. Please try again.${NC}\n"
                 continue
             fi
 
             ADMIN_PASSWORD="$INPUT_PASS"
-            echo -e "  ${GREEN}✓ Admin password confirmed.${NC}"
+            echo -e "  ${GREEN}✓ Admin password configured successfully.${NC}\n"
             break
         done
-        echo ""
     fi
 else
     # Non-interactive fallback
@@ -156,42 +199,18 @@ else
     fi
 fi
 
-# Generate a unique Postgres password (stored in .env and secrets file)
+# Generate unique Postgres secret
 POSTGRES_PASSWORD=$(openssl rand -hex 24 2>/dev/null || tr -dc 'a-f0-9' </dev/urandom | head -c 48)
 
-# ── Summary Banner ────────────────────────────────────────────────────────────
-echo -e "${BLUE}${BOLD}======================================================${NC}"
-echo -e "  Installing Shipyard PaaS on this VPS..."
+echo -e "${BLUE}${BOLD}═════════════════════════════════════════════════════════════════${NC}"
+echo -e "  ${CYAN}Starting Installation Flow...${NC}"
 echo -e "  Admin Email:  ${GREEN}${ADMIN_EMAIL}${NC}"
-echo -e "  Port:         ${GREEN}${SHIPYARD_PORT}${NC}"
-echo -e "  Data Dir:     ${GREEN}${SHIPYARD_DATA_DIR}${NC}"
-echo -e "${BLUE}${BOLD}======================================================${NC}"
-echo ""
-
-# ── Detect root / sudo ───────────────────────────────────────────────────────
-SUDO=""
-if [ "$EUID" -ne 0 ]; then
-    if ! command -v sudo &>/dev/null; then
-        echo -e "${RED}Error: Please run as root, or install sudo first.${NC}"
-        exit 1
-    fi
-    SUDO="sudo"
-fi
-
-# ── Detect OS Package Manager ─────────────────────────────────────────────────
-if command -v apt-get &>/dev/null; then
-    PKG_MANAGER="apt"
-elif command -v yum &>/dev/null; then
-    PKG_MANAGER="yum"
-elif command -v dnf &>/dev/null; then
-    PKG_MANAGER="dnf"
-else
-    echo -e "${YELLOW}Warning: Unknown package manager. Assuming apt-get.${NC}"
-    PKG_MANAGER="apt"
-fi
+echo -e "  Web Port:     ${GREEN}${SHIPYARD_PORT}${NC}"
+echo -e "  Data Path:    ${GREEN}${SHIPYARD_DATA_DIR}${NC}"
+echo -e "${BLUE}${BOLD}═════════════════════════════════════════════════════════════════${NC}\n"
 
 # ── Step 1: Install System Dependencies ──────────────────────────────────────
-echo -e "${BLUE}[1/6] Installing system dependencies...${NC}"
+echo -e "${BLUE}[ 1/7 ] ⚡ Installing system prerequisites...${NC}"
 
 if [ "$PKG_MANAGER" = "apt" ]; then
     $SUDO apt-get update -qq
@@ -200,25 +219,24 @@ if [ "$PKG_MANAGER" = "apt" ]; then
 elif [ "$PKG_MANAGER" = "yum" ] || [ "$PKG_MANAGER" = "dnf" ]; then
     $SUDO $PKG_MANAGER install -y -q curl git openssl ca-certificates nmap-ncat 2>/dev/null || true
 fi
-
-echo -e "${GREEN}✓ System dependencies ready.${NC}"
+echo -e "${GREEN}  ✓ Base packages ready.${NC}"
 
 # ── Step 2: Install Docker ────────────────────────────────────────────────────
-echo -e "${BLUE}[2/6] Checking Docker & Container Runtime...${NC}"
+echo -e "${BLUE}[ 2/7 ] 🐳 Initializing Docker container engine...${NC}"
 
 if ! command -v docker &>/dev/null; then
-    echo -e "${YELLOW}Docker not found. Installing via official script...${NC}"
+    echo -e "${YELLOW}  Docker not detected. Installing via official docker.com script...${NC}"
     curl -fsSL https://get.docker.com | sh
     $SUDO systemctl enable --now docker
-    echo -e "${GREEN}✓ Docker installed and started.${NC}"
+    echo -e "${GREEN}  ✓ Docker engine installed and started.${NC}"
 else
     DOCKER_VERSION=$(docker --version | sed 's/Docker version //' | cut -d',' -f1)
-    echo -e "${GREEN}✓ Docker ${DOCKER_VERSION} already installed.${NC}"
+    echo -e "${GREEN}  ✓ Docker ${DOCKER_VERSION} detected.${NC}"
 fi
 
-# Check Docker Compose (plugin or standalone)
+# Check Docker Compose plugin
 if ! docker compose version &>/dev/null 2>&1; then
-    echo -e "${YELLOW}Docker Compose plugin not found. Installing...${NC}"
+    echo -e "${YELLOW}  Installing docker-compose-plugin...${NC}"
     if [ "$PKG_MANAGER" = "apt" ]; then
         $SUDO apt-get install -y docker-compose-plugin 2>/dev/null || \
         $SUDO apt-get install -y docker-compose 2>/dev/null || true
@@ -227,18 +245,17 @@ if ! docker compose version &>/dev/null 2>&1; then
     fi
 fi
 
-# Ensure current user is in the docker group
 if [ -n "$SUDO" ] && ! groups | grep -q docker; then
     $SUDO usermod -aG docker "$USER" 2>/dev/null || true
 fi
 
 # ── Step 3: Clone / Update Shipyard Source ────────────────────────────────────
-echo -e "${BLUE}[3/6] Fetching Shipyard source code...${NC}"
+echo -e "${BLUE}[ 3/7 ] 📦 Fetching Shipyard source repository...${NC}"
 
 INSTALL_SOURCE="${SHIPYARD_DATA_DIR}/source"
 
 if [ -d "${INSTALL_SOURCE}/.git" ]; then
-    echo -e "  Existing installation found. Pulling latest changes..."
+    echo -e "  Existing repository detected. Syncing origin/main..."
     cd "${INSTALL_SOURCE}"
     git pull --ff-only origin main 2>/dev/null || (git fetch --all && git reset --hard origin/main)
 else
@@ -249,11 +266,10 @@ else
     fi
     git clone --depth 1 "${SHIPYARD_REPO}" "${INSTALL_SOURCE}"
 fi
-
-echo -e "${GREEN}✓ Shipyard source ready at ${INSTALL_SOURCE}${NC}"
+echo -e "${GREEN}  ✓ Source code ready at ${INSTALL_SOURCE}.${NC}"
 
 # ── Step 4: Setup Persistent Data Directories ─────────────────────────────────
-echo -e "${BLUE}[4/6] Setting up persistent storage...${NC}"
+echo -e "${BLUE}[ 4/7 ] 🔒 Initializing persistent encrypted storage...${NC}"
 
 $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/secrets"
 $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/deployments"
@@ -263,18 +279,13 @@ $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/logs"
 $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/postgres"
 $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/redis"
 $SUDO mkdir -p "${SHIPYARD_DATA_DIR}/data/backups"
-
-# Ensure non-root write access for application container
 $SUDO chmod -R 777 "${SHIPYARD_DATA_DIR}/data" 2>/dev/null || true
 
-# Bootstrap a default Caddyfile so the proxy starts immediately
+# Default Caddyfile
 CADDYFILE="${SHIPYARD_DATA_DIR}/data/caddy/Caddyfile"
 if [ ! -f "$CADDYFILE" ]; then
     cat > /tmp/shipyard-caddyfile << 'CADDYEOF'
-# Shipyard Caddy Reverse Proxy Configuration
-# This file is managed dynamically by Shipyard.
-# Do not edit manually — changes will be overwritten.
-
+# Shipyard Dynamic Caddy Reverse Proxy Configuration
 :80 {
     reverse_proxy shipyard-app:3000
     log {
@@ -284,13 +295,11 @@ if [ ! -f "$CADDYFILE" ]; then
 }
 CADDYEOF
     $SUDO mv /tmp/shipyard-caddyfile "$CADDYFILE"
-    echo -e "  ✓ Default Caddyfile created."
 fi
-
-echo -e "${GREEN}✓ Persistent storage configured.${NC}"
+echo -e "${GREEN}  ✓ Storage structure configured.${NC}"
 
 # ── Step 5: Write .env & Secrets File ─────────────────────────────────────────
-echo -e "${BLUE}[5/6] Writing production environment configuration...${NC}"
+echo -e "${BLUE}[ 5/7 ] ⚙️ Configuring production environment & secrets...${NC}"
 
 ENV_FILE="${INSTALL_SOURCE}/.env"
 cat > "$ENV_FILE" << ENVEOF
@@ -305,9 +314,7 @@ POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 DATABASE_URL=postgresql://shipyard:${POSTGRES_PASSWORD}@shipyard-db:5432/shipyard
 REDIS_URL=redis://shipyard-redis:6379
 ENVEOF
-echo -e "  ✓ .env file written."
 
-# Save admin credentials to secrets file (readable by root only)
 SECRETS_FILE="${SHIPYARD_DATA_DIR}/data/secrets/shipyard.secret.json"
 cat > /tmp/shipyard-secrets.json << SECRETSEOF
 {
@@ -319,75 +326,76 @@ cat > /tmp/shipyard-secrets.json << SECRETSEOF
 SECRETSEOF
 $SUDO mv /tmp/shipyard-secrets.json "$SECRETS_FILE"
 $SUDO chmod 600 "$SECRETS_FILE"
-echo -e "  ✓ Credentials secured at ${SECRETS_FILE}"
+echo -e "${GREEN}  ✓ Credentials secured at ${SECRETS_FILE} (0600).${NC}"
 
-echo -e "${GREEN}✓ Environment configured.${NC}"
+# ── Step 6: Install Global CLI Binary ─────────────────────────────────────────
+echo -e "${BLUE}[ 6/7 ] 🛠️ Installing global 'shipyard' CLI command...${NC}"
 
-# ── Step 6: Build and Start Docker Compose Stack ──────────────────────────────
-echo -e "${BLUE}[6/6] Building and launching Shipyard services...${NC}"
-echo -e "  Starting Docker stack (PostgreSQL, Redis, Caddy, Shipyard Control Plane)..."
-echo ""
+if [ -f "${INSTALL_SOURCE}/bin/shipyard" ]; then
+    $SUDO cp "${INSTALL_SOURCE}/bin/shipyard" /usr/local/bin/shipyard
+    $SUDO chmod +x /usr/local/bin/shipyard
+    echo -e "${GREEN}  ✓ Global CLI installed -> ${BOLD}/usr/local/bin/shipyard${NC}"
+else
+    echo -e "${YELLOW}  Notice: CLI binary source not found, skipping CLI symlink.${NC}"
+fi
+
+# ── Step 7: Build and Start Docker Services ───────────────────────────────────
+echo -e "${BLUE}[ 7/7 ] 🚀 Launching production container cluster...${NC}"
+echo -e "  Starting PostgreSQL 16, Redis 7, Caddy 2, and Shipyard Control Plane..."
 
 cd "${INSTALL_SOURCE}"
 
-# Build the Docker image from source
-if $SUDO docker image inspect shipyard-app:latest &>/dev/null 2>&1; then
-    echo -e "  Existing image found — rebuilding with layer cache..."
-    $SUDO docker compose --env-file .env build shipyard-app
-else
-    echo -e "  Building production image (this may take 2-4 minutes)..."
-    $SUDO docker compose --env-file .env build shipyard-app
-fi
-
-# Start all services (detached)
+$SUDO docker compose --env-file .env build shipyard-app
 $SUDO docker compose --env-file .env up -d
 
-# Wait for the app to respond on /api/health
-echo -e "${BLUE}  Waiting for Shipyard control plane to become healthy (up to 90s)...${NC}"
+echo -e "\n${CYAN}▶ Waiting for Shipyard control plane to become healthy...${NC}"
 MAX_WAIT=90
 WAIT_COUNT=0
-until [ $WAIT_COUNT -ge $MAX_WAIT ]; do
+HEALTHY=false
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:${SHIPYARD_PORT}/api/health 2>/dev/null || echo 000)
     if [ "$STATUS" = "200" ]; then
-        echo -e "${GREEN}  ✓ Shipyard is responding (HTTP 200).${NC}"
+        HEALTHY=true
+        echo -e "${GREEN}  ✓ Shipyard health check responded with HTTP 200 OK!${NC}"
         break
     fi
     WAIT_COUNT=$((WAIT_COUNT + 3))
     sleep 3
 done
 
-# ── Get Public IP ─────────────────────────────────────────────────────────────
-IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
-     curl -s --max-time 5 https://icanhazip.com 2>/dev/null || \
+# Detect Public IP
+IP=$(curl -s --max-time 4 https://api.ipify.org 2>/dev/null || \
+     curl -s --max-time 4 https://icanhazip.com 2>/dev/null || \
      hostname -I 2>/dev/null | awk '{print $1}' || \
      echo "YOUR_VPS_IP")
 
-# ── Success Banner ─────────────────────────────────────────────────────────────
+# ── Victory Presentation ──────────────────────────────────────────────────────
 echo ""
-echo -e "${GREEN}${BOLD}=============================================================${NC}"
-echo -e "${GREEN}${BOLD}  ⚓ SHIPYARD PAAS IS LIVE AND OPERATIONAL!${NC}"
-echo -e "${GREEN}${BOLD}=============================================================${NC}"
+echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}${BOLD}║              ⚓  SHIPYARD PAAS IS LIVE AND OPERATIONAL!               ║${NC}"
+echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  Dashboard URL:  ${CYAN}${BOLD}http://${IP}:${SHIPYARD_PORT}${NC}"
-echo -e "  Local URL:      ${CYAN}http://localhost:${SHIPYARD_PORT}${NC}"
+echo -e "  ${BOLD}Web Dashboard:${NC}    ${CYAN}${BOLD}http://${IP}:${SHIPYARD_PORT}${NC}"
+echo -e "  ${BOLD}Local URL:${NC}        ${CYAN}http://localhost:${SHIPYARD_PORT}${NC}"
 echo ""
-echo -e "  ${BOLD}Administrator Credentials:${NC}"
-echo -e "  Email:          ${YELLOW}${ADMIN_EMAIL}${NC}"
-echo -e "  Password:       ${YELLOW}${ADMIN_PASSWORD}${NC}"
+echo -e "  ${BOLD}Administrator Login:${NC}"
+echo -e "  Email:             ${YELLOW}${ADMIN_EMAIL}${NC}"
+echo -e "  Password:          ${YELLOW}${ADMIN_PASSWORD}${NC}"
 echo ""
-echo -e "  ${BOLD}Credentials secured at:${NC}"
+echo -e "  ${BOLD}Credentials Saved:${NC}"
 echo -e "  ${BLUE}${SECRETS_FILE}${NC} (mode 0600)"
+echo ""
+echo -e "${MAGENTA}${BOLD}⚡ Global CLI Commands Installed:${NC}"
+echo -e "  • ${CYAN}shipyard update${NC}         Fetch updates & reinstall with ${BOLD}ZERO data loss${NC}"
+echo -e "  • ${CYAN}shipyard status${NC}         View real-time hardware telemetry & services"
+echo -e "  • ${CYAN}shipyard logs${NC}           Stream live application logs"
+echo -e "  • ${CYAN}shipyard restart${NC}        Restart all services cleanly"
+echo -e "  • ${CYAN}shipyard reset-password${NC} Reset administrator password from terminal"
+echo -e "  • ${RED}shipyard uninstall${NC}      Cleanly uninstall Shipyard from this VPS"
 echo ""
 echo -e "${GREEN}${BOLD}Next Steps:${NC}"
 echo -e "  1. Open ${CYAN}http://${IP}:${SHIPYARD_PORT}${NC} in your web browser"
-echo -e "  2. Sign in with the administrator credentials above"
-echo -e "  3. Connect a custom domain for zero-configuration Let's Encrypt SSL"
-echo -e "  4. Deploy your first Git repository or drag-and-drop static files"
-echo ""
-echo -e "${BLUE}Useful Management Commands:${NC}"
-echo -e "  View logs:      ${YELLOW}cd ${INSTALL_SOURCE} && docker compose logs -f shipyard-app${NC}"
-echo -e "  Restart stack:  ${YELLOW}cd ${INSTALL_SOURCE} && docker compose restart${NC}"
-echo -e "  Stop stack:     ${YELLOW}cd ${INSTALL_SOURCE} && docker compose down${NC}"
-echo -e "  Reset password: ${YELLOW}cd ${INSTALL_SOURCE} && node scripts/init-appliance.js --reset-password ${ADMIN_EMAIL} <new-password>${NC}"
-echo -e "  Update app:     ${YELLOW}cd ${INSTALL_SOURCE} && git pull && docker compose up -d --build${NC}"
+echo -e "  2. Sign in with the credentials shown above"
+echo -e "  3. Connect a custom domain for instant Let's Encrypt SSL"
+echo -e "  4. Deploy your first Git repository or static site"
 echo ""

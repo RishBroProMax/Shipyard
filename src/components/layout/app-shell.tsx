@@ -21,9 +21,21 @@ export function AppShell({ children, title }: AppShellProps) {
   useEffect(() => {
     // Fetch current user and nodes
     fetch("/api/auth/me")
-      .then((res) => res.json())
+      .then((res) => {
+        if (res.status === 401) {
+          const isShowcase =
+            typeof window !== "undefined" &&
+            (window.location.hostname.includes("vercel.app") ||
+              process.env.NEXT_PUBLIC_SHIPYARD_MODE === "public");
+          if (!isShowcase) {
+            window.location.href = "/login";
+          }
+          return null;
+        }
+        return res.json();
+      })
       .then((data) => {
-        if (data.user?.email) {
+        if (data?.user?.email) {
           setUserEmail(data.user.email);
         }
       })

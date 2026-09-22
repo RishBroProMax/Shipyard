@@ -3,8 +3,7 @@ import crypto from "crypto";
 import { cookies } from "next/headers";
 import { db, StoredUser } from "@/lib/db";
 
-const SESSION_COOKIE_NAME = "shipyard_session";
-const SESSION_DURATION_DAYS = 14;
+import { SESSION_COOKIE_NAME, SESSION_DURATION_DAYS } from "./auth-constants";
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(12);
