@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FolderGit2,
@@ -30,7 +30,6 @@ export function Sidebar({
   onCloseMobile,
 }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const navItems = [
     { label: "Overview", href: "/", icon: LayoutDashboard },
@@ -43,12 +42,10 @@ export function Sidebar({
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } catch {
-      router.push("/login");
-    }
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } catch {}
+    // Hard navigation — ensures browser discards the session cookie before next request
+    window.location.href = "/login";
   };
 
   const content = (

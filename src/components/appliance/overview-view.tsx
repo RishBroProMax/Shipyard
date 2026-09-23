@@ -1,49 +1,204 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout/app-shell";
 import { OnboardingWizard } from "@/components/onboarding/wizard";
 import { NewProjectModal } from "@/components/projects/new-project-modal";
 import { ConnectNodeModal } from "@/components/servers/connect-node-modal";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
   ArrowUpRight,
   CheckCircle2,
-  Clock,
   Cpu,
   FolderGit2,
   HardDrive,
   Network,
   Plus,
-  Radio,
   Rocket,
   Server,
-  Terminal,
-  XCircle,
   ExternalLink,
-  Layers,
-  ShieldCheck,
-  RefreshCw,
   Box,
+  Zap,
+  RefreshCw,
+  TrendingUp,
+  Globe,
+  MemoryStick,
+  ArrowDown,
+  ArrowUp,
+  Circle,
 } from "lucide-react";
 import { DeploymentModel, ProjectModel, ServerModel } from "@/types";
 
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface LiveMetrics {
+  ts: number;
+  cpu: { cores: number; usage: number };
+  memory: { total: number; used: number; free: number; usage: number; totalGb: number; usedGb: number };
+  disk: { total: number; used: number; free: number; usage: number; totalGb: number; usedGb: number };
+  network: { inSec: number; outSec: number; inTotal: number; outTotal: number; inKbSec: number; outKbSec: number };
+  system: { platform: string; uptime: number; nodeUptime: number; loadAvg: number[]; hostname: string };
+  docker: { version: string; containers: number; available: boolean };
+}
+
+// ── Mini Sparkline Component ───────────────────────────────────────────────────
+function Sparkline({ data, color, height = 40 }: { data: number[]; color: string; height?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || data.length < 2) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const max = Math.max(...data, 1);
+    const step = w / (data.length - 1);
+    const points = data.map((v, i) => ({ x: i * step, y: h - (v / max) * (h - 4) }));
+    // Fill
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, color + "40");
+    grad.addColorStop(1, color + "00");
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+    points.forEach((p) => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(w, h);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
+    ctx.stroke();
+  }, [data, color]);
+  return <canvas ref={canvasRef} width={180} height={height} className="w-full" style={{ height }} />;
+}
+
+// ── Radial Ring ────────────────────────────────────────────────────────────────
+function RadialRing({
+  value,
+  max = 100,
+  size = 80,
+  stroke = 6,
+  color,
+  label,
+  sublabel,
+}: {
+  value: number;
+  max?: number;
+  size?: number;
+  stroke?: number;
+  color: string;
+  label: string;
+  sublabel?: string;
+}) {
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(1, value / max);
+  const dash = circ * pct;
+  const center = size / 2;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={center} cy={center} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+        <circle
+          cx={center}
+          cy={center}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeDasharray={`${dash} ${circ}`}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dasharray 0.6s ease" }}
+        />
+      </svg>
+      <div className="text-center" style={{ marginTop: -size / 2 - 6 }}>
+        <div
+          className="text-xs font-bold font-mono"
+          style={{ color, lineHeight: 1 }}
+        >
+          {label}
+        </div>
+        {sublabel && (
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: "var(--ink-300)" }}>
+            {sublabel}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Format helpers ─────────────────────────────────────────────────────────────
+function fmtUptime(s: number) {
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s % 60}s`;
+}
+function fmtBytes(b: number) {
+  if (b > 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB/s`;
+  if (b > 1024) return `${(b / 1024).toFixed(1)} KB/s`;
+  return `${b} B/s`;
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  RUNNING: "#10b981",
+  BUILDING: "#f59e0b",
+  DEPLOYING: "#f59e0b",
+  FAILED: "#ef4444",
+  IDLE: "#6366f1",
+  STOPPED: "#52525b",
+  QUEUED: "#8b5cf6",
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 export function OverviewView() {
   const [projects, setProjects] = useState<ProjectModel[]>([]);
   const [deployments, setDeployments] = useState<DeploymentModel[]>([]);
   const [servers, setServers] = useState<ServerModel[]>([]);
+  const [metrics, setMetrics] = useState<LiveMetrics | null>(null);
   const [systemStatus, setSystemStatus] = useState<any>(null);
   const [showWizard, setShowWizard] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [isConnectNodeOpen, setIsConnectNodeOpen] = useState(false);
   const [preselectedTemplate, setPreselectedTemplate] = useState<string | undefined>(undefined);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  const fetchData = async () => {
+  // Sparkline history buffers
+  const [cpuHistory, setCpuHistory] = useState<number[]>(Array(30).fill(0));
+  const [memHistory, setMemHistory] = useState<number[]>(Array(30).fill(0));
+  const [netInHistory, setNetInHistory] = useState<number[]>(Array(30).fill(0));
+  const [netOutHistory, setNetOutHistory] = useState<number[]>(Array(30).fill(0));
+
+  // ── Fast metrics poll (2s) ────────────────────────────────────────────────
+  const pollMetrics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/metrics", { cache: "no-store" });
+      if (!res.ok) return;
+      const data: LiveMetrics = await res.json();
+      setMetrics(data);
+      setCpuHistory((h) => [...h.slice(-29), data.cpu.usage]);
+      setMemHistory((h) => [...h.slice(-29), data.memory.usage]);
+      setNetInHistory((h) => [...h.slice(-29), data.network.inSec / 1024]);
+      setNetOutHistory((h) => [...h.slice(-29), data.network.outSec / 1024]);
+      setLastRefresh(new Date());
+    } catch {}
+  }, []);
+
+  // ── Data poll (5s) ───────────────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
     try {
       const [projRes, depRes, srvRes, statRes] = await Promise.all([
         fetch("/api/projects"),
@@ -51,40 +206,30 @@ export function OverviewView() {
         fetch("/api/servers"),
         fetch("/api/system/status"),
       ]);
-
-      if (projRes.ok) {
-        const data = await projRes.json();
-        setProjects(data.projects || []);
-      }
-      if (depRes.ok) {
-        const data = await depRes.json();
-        setDeployments(data.deployments || []);
-      }
-      if (srvRes.ok) {
-        const data = await srvRes.json();
-        setServers(data.servers || []);
-      }
-      if (statRes.ok) {
-        const data = await statRes.json();
-        setSystemStatus(data);
-      }
+      if (projRes.ok) setProjects((await projRes.json()).projects || []);
+      if (depRes.ok) setDeployments((await depRes.json()).deployments || []);
+      if (srvRes.ok) setServers((await srvRes.json()).servers || []);
+      if (statRes.ok) setSystemStatus(await statRes.json());
     } catch {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 3500);
-    return () => clearInterval(interval);
-  }, []);
+    pollMetrics();
+    const metricsInterval = setInterval(pollMetrics, 2000);
+    const dataInterval = setInterval(fetchData, 8000);
+    return () => {
+      clearInterval(metricsInterval);
+      clearInterval(dataInterval);
+    };
+  }, [fetchData, pollMetrics]);
 
   const runningProjectsCount = projects.filter((p) => p.status === "RUNNING").length;
   const onlineServersCount = servers.filter((s) => s.status === "ONLINE").length;
   const successfulDeploys = deployments.filter((d) => d.status === "RUNNING").length;
-  const successRate =
-    deployments.length > 0 ? Math.round((successfulDeploys / deployments.length) * 100) : 0;
 
   const handleOpenStarter = (templateId: string) => {
     setPreselectedTemplate(templateId);
@@ -93,510 +238,629 @@ export function OverviewView() {
 
   return (
     <AppShell title="Cluster Overview">
-      {/* Top Banner Actions */}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold tracking-tight text-white">Cluster Dashboard</h1>
-            <Badge variant="cyan" className="font-mono text-[10px] tracking-wider">
-              VERCEL-LITE APPLIANCE
-            </Badge>
+          <div className="flex items-center gap-3 mb-1">
+            <h1
+              className="text-2xl font-bold tracking-tight"
+              style={{ fontFamily: "'Syne', sans-serif", color: "var(--ink-50)" }}
+            >
+              Cluster Dashboard
+            </h1>
+            <span
+              className="text-[10px] font-mono px-2 py-0.5 rounded border"
+              style={{
+                background: "rgba(0,212,255,0.08)",
+                borderColor: "var(--signal-border)",
+                color: "var(--signal)",
+                letterSpacing: "0.12em",
+              }}
+            >
+              LIVE
+            </span>
+            {metrics && (
+              <span className="text-[11px] font-mono" style={{ color: "var(--ink-300)" }}>
+                {lastRefresh.toLocaleTimeString()}
+              </span>
+            )}
           </div>
-          <p className="text-xs text-zinc-400">
-            Self-hosted container orchestration, real-time hardware telemetry, and dynamic reverse proxy routing.
+          <p className="text-xs font-mono" style={{ color: "var(--ink-300)" }}>
+            {metrics?.system.hostname || "shipyard-node"} ·{" "}
+            {metrics ? fmtUptime(metrics.system.uptime) : "–"} uptime ·{" "}
+            {metrics?.cpu.cores || "–"} cores · {metrics?.system.platform || "linux"}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => { fetchData(); pollMetrics(); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all"
+            style={{
+              background: "var(--ink-700)",
+              border: "1px solid var(--ink-600)",
+              color: "var(--ink-200)",
+            }}
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refresh
+          </button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsConnectNodeOpen(true)}
-            className="gap-1.5"
+            className="gap-1.5 font-mono text-xs"
           >
-            <Server className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Connect Node</span>
+            <Server className="w-3.5 h-3.5" />
+            Add Node
           </Button>
-
           <Button
-            variant="default"
             size="sm"
-            onClick={() => {
-              setPreselectedTemplate(undefined);
-              setIsNewProjectOpen(true);
-            }}
-            className="gap-1.5"
+            onClick={() => { setPreselectedTemplate(undefined); setIsNewProjectOpen(true); }}
+            className="gap-1.5 font-mono text-xs"
+            style={{ background: "var(--signal)", color: "var(--ink-900)" }}
           >
             <Plus className="w-4 h-4" />
-            <span>New Project</span>
+            New Project
           </Button>
         </div>
       </div>
 
-      {/* Onboarding Wizard banner if user has <= 1 project */}
+      {/* ── Onboarding ──────────────────────────────────────────────────── */}
       {showWizard && projects.length <= 1 && (
         <OnboardingWizard
           onOpenConnectNode={() => setIsConnectNodeOpen(true)}
-          onOpenNewProject={() => {
-            setPreselectedTemplate(undefined);
-            setIsNewProjectOpen(true);
-          }}
+          onOpenNewProject={() => { setPreselectedTemplate(undefined); setIsNewProjectOpen(true); }}
           onDismiss={() => setShowWizard(false)}
         />
       )}
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {/* Card 1: Container Workloads */}
-        <Card className="hover:border-zinc-700/80 transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-              Running Workloads
-            </CardTitle>
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              <Box className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold font-mono text-white">
-                {runningProjectsCount}
-              </span>
-              <span className="text-xs text-zinc-500 font-mono">
-                / {projects.length} container{projects.length === 1 ? "" : "s"}
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-zinc-400 flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-              <span>
-                {systemStatus?.services?.dockerEngine?.status === "UP"
-                  ? "Docker Engine isolated"
-                  : "Native supervisor sandbox"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ── Live Hardware Monitoring Panel ──────────────────────────────── */}
+      <div
+        className="rounded-lg p-4 mb-6 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, var(--ink-800) 0%, var(--ink-850) 100%)",
+          border: "1px solid var(--ink-700)",
+        }}
+      >
+        {/* Subtle grid overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(var(--ink-700) 1px, transparent 1px), linear-gradient(90deg, var(--ink-700) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+            opacity: 0.2,
+          }}
+        />
 
-        {/* Card 2: Build Success Rate */}
-        <Card className="hover:border-zinc-700/80 transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-              Build Health
-            </CardTitle>
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              <Rocket className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold font-mono text-white">
-                {deployments.length > 0 ? `${successRate}%` : "Ready"}
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity className="w-4 h-4" style={{ color: "var(--signal)" }} />
+            <span
+              className="text-xs font-semibold font-mono uppercase tracking-widest"
+              style={{ color: "var(--ink-100)" }}
+            >
+              Live Host Telemetry
+            </span>
+            {!metrics && (
+              <span className="text-[10px] font-mono animate-pulse" style={{ color: "var(--ink-400)" }}>
+                Collecting…
               </span>
-              <span className="text-xs text-zinc-500 font-mono">
-                ({deployments.length} deployment{deployments.length === 1 ? "" : "s"})
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-zinc-400 flex items-center gap-1.5 font-mono">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Collision-free port routing</span>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </div>
 
-        {/* Card 3: Connected Nodes */}
-        <Card className="hover:border-zinc-700/80 transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-              Worker Nodes
-            </CardTitle>
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              <Server className="w-4 h-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* CPU */}
+            <div
+              className="rounded-md p-3"
+              style={{ background: "rgba(0,212,255,0.04)", border: "1px solid rgba(0,212,255,0.12)" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5" style={{ color: "var(--signal)" }} />
+                  <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--ink-300)" }}>
+                    CPU
+                  </span>
+                </div>
+                <span
+                  className="text-lg font-bold font-mono tabular-nums"
+                  style={{
+                    color:
+                      (metrics?.cpu.usage || 0) > 80
+                        ? "#ef4444"
+                        : (metrics?.cpu.usage || 0) > 50
+                        ? "#f59e0b"
+                        : "var(--signal)",
+                  }}
+                >
+                  {metrics ? `${metrics.cpu.usage.toFixed(1)}%` : "–"}
+                </span>
+              </div>
+              <Sparkline data={cpuHistory} color="#00d4ff" height={36} />
+              <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                <span>{metrics?.cpu.cores || "–"} cores</span>
+                <span>load: {metrics?.system.loadAvg?.[0]?.toFixed(2) || "–"}</span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold font-mono text-white">
-                {onlineServersCount}
-              </span>
-              <span className="text-xs text-zinc-500 font-mono">
-                / {servers.length} node{servers.length === 1 ? "" : "s"} online
-              </span>
-            </div>
-            <div className="mt-2 text-[11px] text-emerald-400 flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>AES-256 encrypted control link</span>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Card 4: Web Server & Network */}
-        <Card className="hover:border-zinc-700/80 transition-all">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-semibold text-zinc-400 uppercase tracking-wider font-mono">
-              Web Server & I/O
-            </CardTitle>
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              <Network className="w-4 h-4" />
+            {/* RAM */}
+            <div
+              className="rounded-md p-3"
+              style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.12)" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <MemoryStick className="w-3.5 h-3.5" style={{ color: "#10b981" }} />
+                  <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--ink-300)" }}>
+                    RAM
+                  </span>
+                </div>
+                <span
+                  className="text-lg font-bold font-mono tabular-nums"
+                  style={{
+                    color:
+                      (metrics?.memory.usage || 0) > 85
+                        ? "#ef4444"
+                        : (metrics?.memory.usage || 0) > 65
+                        ? "#f59e0b"
+                        : "#10b981",
+                  }}
+                >
+                  {metrics ? `${metrics.memory.usage.toFixed(1)}%` : "–"}
+                </span>
+              </div>
+              <Sparkline data={memHistory} color="#10b981" height={36} />
+              <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                <span>{metrics ? `${metrics.memory.usedGb.toFixed(1)}GB` : "–"} used</span>
+                <span>{metrics ? `${metrics.memory.totalGb.toFixed(1)}GB` : "–"} total</span>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2 font-mono">
-              <span className="text-lg font-bold text-white">
-                ↓ {Math.round((systemStatus?.cluster?.networkInSec || 0) / 1024)} KB/s
+
+            {/* Network IN */}
+            <div
+              className="rounded-md p-3"
+              style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <ArrowDown className="w-3.5 h-3.5" style={{ color: "#6366f1" }} />
+                  <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--ink-300)" }}>
+                    NET IN
+                  </span>
+                </div>
+                <span className="text-lg font-bold font-mono tabular-nums" style={{ color: "#6366f1" }}>
+                  {metrics ? `${metrics.network.inKbSec.toFixed(1)}` : "–"}
+                  <span className="text-[11px] ml-0.5">KB/s</span>
+                </span>
+              </div>
+              <Sparkline data={netInHistory} color="#6366f1" height={36} />
+              <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                <span>↓ inbound</span>
+                <span>{metrics ? fmtBytes(metrics.network.inSec) : "–"}</span>
+              </div>
+            </div>
+
+            {/* Network OUT */}
+            <div
+              className="rounded-md p-3"
+              style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.12)" }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <ArrowUp className="w-3.5 h-3.5" style={{ color: "#f59e0b" }} />
+                  <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: "var(--ink-300)" }}>
+                    NET OUT
+                  </span>
+                </div>
+                <span className="text-lg font-bold font-mono tabular-nums" style={{ color: "#f59e0b" }}>
+                  {metrics ? `${metrics.network.outKbSec.toFixed(1)}` : "–"}
+                  <span className="text-[11px] ml-0.5">KB/s</span>
+                </span>
+              </div>
+              <Sparkline data={netOutHistory} color="#f59e0b" height={36} />
+              <div className="flex justify-between mt-1.5 text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                <span>↑ outbound</span>
+                <span>{metrics ? fmtBytes(metrics.network.outSec) : "–"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Disk bar */}
+          {metrics && (
+            <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--ink-700)" }}>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <HardDrive className="w-3.5 h-3.5" style={{ color: "var(--ink-300)" }} />
+                  <span className="text-[11px] font-mono" style={{ color: "var(--ink-300)" }}>
+                    Disk — {metrics.disk.usedGb.toFixed(1)}GB used / {metrics.disk.totalGb.toFixed(1)}GB total
+                  </span>
+                </div>
+                <span
+                  className="text-[11px] font-mono font-semibold"
+                  style={{
+                    color:
+                      metrics.disk.usage > 85
+                        ? "#ef4444"
+                        : metrics.disk.usage > 70
+                        ? "#f59e0b"
+                        : "var(--ink-200)",
+                  }}
+                >
+                  {metrics.disk.usage.toFixed(1)}%
+                </span>
+              </div>
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: "var(--ink-700)" }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${Math.min(100, metrics.disk.usage)}%`,
+                    background:
+                      metrics.disk.usage > 85
+                        ? "linear-gradient(90deg, #ef4444, #dc2626)"
+                        : metrics.disk.usage > 70
+                        ? "linear-gradient(90deg, #f59e0b, #d97706)"
+                        : "linear-gradient(90deg, var(--ink-400), var(--ink-300))",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Docker info pill */}
+          {metrics?.docker.available && (
+            <div className="mt-3 flex items-center gap-3">
+              <span
+                className="text-[10px] font-mono px-2 py-0.5 rounded"
+                style={{ background: "rgba(0,212,255,0.08)", color: "var(--signal)", border: "1px solid var(--signal-border)" }}
+              >
+                Docker {metrics.docker.version}
               </span>
-              <span className="text-xs text-zinc-500">
-                ↑ {Math.round((systemStatus?.cluster?.networkOutSec || 0) / 1024)} KB/s
+              <span className="text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                {metrics.docker.containers} container{metrics.docker.containers !== 1 ? "s" : ""} running
               </span>
             </div>
-            <div className="mt-2 text-[11px] text-cyan-400 flex items-center gap-1.5 font-mono">
-              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
-              <span>{systemStatus?.proxy?.activeRoutes || 0} active Caddy routes</span>
-            </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
 
-      {/* Cluster Resource Telemetry Bar */}
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-cyan-400" />
-            <CardTitle className="text-xs font-semibold text-zinc-200 uppercase tracking-wider font-mono">
-              Host Kernel Telemetry & Resource Usage
-            </CardTitle>
-          </div>
-          <Badge variant="outline" className="font-mono text-[10px] text-zinc-400">
-            Real Hardware /proc Stats
-          </Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* CPU Bar */}
-            <div>
-              <div className="flex justify-between text-xs font-mono text-zinc-400 mb-2">
-                <span>CPU Utilization</span>
-                <span className="text-white font-semibold">
-                  {systemStatus?.cluster?.avgCpuUsage || 0}%
-                </span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, systemStatus?.cluster?.avgCpuUsage || 0)}%` }}
-                ></div>
-              </div>
+      {/* ── Summary Stats Row ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {[
+          {
+            label: "Running Apps",
+            value: runningProjectsCount,
+            sub: `${projects.length} total`,
+            icon: Box,
+            accent: "var(--signal)",
+          },
+          {
+            label: "Online Nodes",
+            value: onlineServersCount,
+            sub: `${servers.length} connected`,
+            icon: Server,
+            accent: "#10b981",
+          },
+          {
+            label: "Deployments",
+            value: deployments.length,
+            sub: `${successfulDeploys} live`,
+            icon: Rocket,
+            accent: "#6366f1",
+          },
+          {
+            label: "Proxy Routes",
+            value: systemStatus?.proxy?.activeRoutes || 0,
+            sub: "active caddy",
+            icon: Globe,
+            accent: "#f59e0b",
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-lg p-4 flex items-center gap-3"
+            style={{ background: "var(--ink-800)", border: "1px solid var(--ink-700)" }}
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: `${stat.accent}18`, border: `1px solid ${stat.accent}30` }}
+            >
+              <stat.icon className="w-4 h-4" style={{ color: stat.accent }} />
             </div>
-
-            {/* RAM Bar */}
             <div>
-              <div className="flex justify-between text-xs font-mono text-zinc-400 mb-2">
-                <span>Memory Allocation</span>
-                <span className="text-white font-semibold">
-                  {systemStatus?.cluster?.memoryUsagePercent || 0}% (
-                  {(
-                    (systemStatus?.cluster?.memoryUsedBytes || 0) /
-                    (1024 * 1024 * 1024)
-                  ).toFixed(1)}{" "}
-                  GB)
-                </span>
+              <div className="text-xl font-bold font-mono tabular-nums" style={{ color: stat.accent, lineHeight: 1 }}>
+                {isLoading ? "–" : stat.value}
               </div>
-              <div className="w-full h-2.5 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, systemStatus?.cluster?.memoryUsagePercent || 0)}%`,
-                  }}
-                ></div>
+              <div className="text-[11px] font-mono" style={{ color: "var(--ink-300)" }}>
+                {stat.label}
               </div>
-            </div>
-
-            {/* Storage / Active Containers */}
-            <div>
-              <div className="flex justify-between text-xs font-mono text-zinc-400 mb-2">
-                <span>Active Workloads</span>
-                <span className="text-white font-semibold">
-                  {runningProjectsCount} active ({servers.length} node{servers.length === 1 ? "" : "s"})
-                </span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-zinc-900 overflow-hidden border border-zinc-800">
-                <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      projects.length > 0 ? (runningProjectsCount / projects.length) * 100 : 0
-                    )}%`,
-                  }}
-                ></div>
+              <div className="text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                {stat.sub}
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
 
-      {/* Vercel-Style 1-Click Starter Templates Shelf */}
+      {/* ── 1-Click Starters ─────────────────────────────────────────────── */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-              Deploy Ready-To-Run Starters (1-Click Real Workloads)
-            </h2>
+            <Zap className="w-4 h-4" style={{ color: "#f59e0b" }} />
+            <span
+              className="text-xs font-semibold font-mono uppercase tracking-widest"
+              style={{ color: "var(--ink-200)" }}
+            >
+              1-Click Deploy
+            </span>
           </div>
-          <span className="text-[11px] text-zinc-500 font-mono">Instant zero-config code</span>
+          <span className="text-[11px] font-mono" style={{ color: "var(--ink-400)" }}>
+            instant zero-config
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {[
-            {
-              id: "static-landing",
-              title: "Modern Static Web",
-              desc: "Pure HTML5, CSS3, dynamic telemetry widget. Instant 2s deploy.",
-              tag: "Static / Edge",
-              color: "text-cyan-400",
-            },
-            {
-              id: "express-api",
-              title: "Node.js Express API",
-              desc: "Production REST API with /api/health, /api/stats, and CORS.",
-              tag: "Node.js 20",
-              color: "text-emerald-400",
-            },
-            {
-              id: "python-fastapi",
-              title: "Python FastAPI",
-              desc: "Asynchronous Python API with auto-generated Swagger /docs.",
-              tag: "Python 3.11",
-              color: "text-yellow-400",
-            },
-            {
-              id: "nextjs-app",
-              title: "Next.js 14 App",
-              desc: "Modern React 18 App Router with standalone Docker outputs.",
-              tag: "React 18 / SSR",
-              color: "text-white",
-            },
-          ].map((starter) => (
-            <Card
-              key={starter.id}
-              onClick={() => handleOpenStarter(starter.id)}
-              className="cursor-pointer hover:border-zinc-700 hover:bg-zinc-900/60 transition-all p-4 flex flex-col justify-between group"
+            { id: "static-landing", title: "Static Web", tag: "HTML/CSS", color: "#00d4ff", icon: Globe },
+            { id: "express-api", title: "Express API", tag: "Node 20", color: "#10b981", icon: Zap },
+            { id: "python-fastapi", title: "FastAPI", tag: "Python 3.11", color: "#f59e0b", icon: Activity },
+            { id: "nextjs-app", title: "Next.js 14", tag: "React SSR", color: "#a78bfa", icon: TrendingUp },
+          ].map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleOpenStarter(s.id)}
+              className="p-3 rounded-lg text-left transition-all group"
+              style={{
+                background: "var(--ink-800)",
+                border: "1px solid var(--ink-700)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = s.color + "50";
+                (e.currentTarget as HTMLElement).style.background = s.color + "08";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--ink-700)";
+                (e.currentTarget as HTMLElement).style.background = "var(--ink-800)";
+              }}
             >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
-                    {starter.tag}
-                  </span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-white transition-colors" />
-                </div>
-                <h3 className="text-sm font-semibold text-white group-hover:text-cyan-300 transition-colors">
-                  {starter.title}
-                </h3>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">{starter.desc}</p>
+              <div className="flex items-center justify-between mb-2">
+                <s.icon className="w-4 h-4" style={{ color: s.color }} />
+                <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: s.color }} />
               </div>
-
-              <div className="mt-3 pt-2.5 border-t border-zinc-900/80 flex items-center justify-between text-[11px] font-mono text-zinc-500 group-hover:text-zinc-300">
-                <span>Deploy Starter</span>
-                <span>→</span>
+              <div className="text-sm font-semibold" style={{ color: "var(--ink-50)" }}>
+                {s.title}
               </div>
-            </Card>
+              <div
+                className="text-[10px] font-mono mt-0.5 px-1.5 py-0.5 rounded inline-block"
+                style={{ background: s.color + "18", color: s.color }}
+              >
+                {s.tag}
+              </div>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Two Column Layout: Active Projects & Recent Deployments */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Projects Shelf */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-              Active Projects & Containers
-            </h2>
+      {/* ── Projects + Deployments ───────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Projects — 2 cols */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className="text-xs font-semibold font-mono uppercase tracking-widest"
+              style={{ color: "var(--ink-200)" }}
+            >
+              Projects
+            </span>
             <Link
               href="/projects"
-              className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-mono transition-colors"
+              className="text-xs font-mono flex items-center gap-1 transition-colors"
+              style={{ color: "var(--ink-400)" }}
+              onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "var(--ink-50)")}
+              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--ink-400)")}
             >
-              <span>View All ({projects.length})</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              View all ({projects.length}) <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
 
           {projects.length === 0 ? (
-            <Card className="p-8 text-center">
-              <FolderGit2 className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-              <h3 className="text-sm font-semibold text-white">No projects deployed yet</h3>
-              <p className="text-xs text-zinc-400 mt-1 max-w-md mx-auto leading-relaxed">
-                Choose one of the 1-click starters above, connect any public or private Git repository, or drop files in the in-browser code editor.
+            <div
+              className="rounded-lg p-8 text-center"
+              style={{ background: "var(--ink-800)", border: "1px dashed var(--ink-600)" }}
+            >
+              <FolderGit2 className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--ink-500)" }} />
+              <p className="text-sm font-semibold" style={{ color: "var(--ink-200)" }}>
+                No projects yet
               </p>
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={() => {
-                    setPreselectedTemplate("static-landing");
-                    setIsNewProjectOpen(true);
-                  }}
-                >
-                  Deploy First Project
-                </Button>
-              </div>
-            </Card>
+              <p className="text-xs font-mono mt-1" style={{ color: "var(--ink-400)" }}>
+                Deploy from a Git URL or pick a starter above
+              </p>
+              <Button
+                size="sm"
+                className="mt-4"
+                onClick={() => { setPreselectedTemplate("static-landing"); setIsNewProjectOpen(true); }}
+                style={{ background: "var(--signal)", color: "var(--ink-900)" }}
+              >
+                Deploy First App
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {projects.slice(0, 6).map((project) => {
-                const isRunning = project.status === "RUNNING";
+                const statusColor = STATUS_COLOR[project.status] || "#52525b";
                 const isBuilding = project.status === "BUILDING" || project.status === "DEPLOYING";
-                const isFailed = project.status === "FAILED";
-
                 return (
-                  <Card
+                  <Link
                     key={project.id}
-                    className="p-5 hover:border-zinc-700 hover:bg-zinc-900/40 transition-all flex flex-col justify-between group"
+                    href={`/projects/${project.id}`}
+                    className="block rounded-lg p-4 transition-all group"
+                    style={{ background: "var(--ink-800)", border: "1px solid var(--ink-700)" }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--ink-600)";
+                      (e.currentTarget as HTMLElement).style.background = "var(--ink-750)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.borderColor = "var(--ink-700)";
+                      (e.currentTarget as HTMLElement).style.background = "var(--ink-800)";
+                    }}
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2.5 h-2.5 rounded-full ${
-                              isRunning
-                                ? "bg-emerald-400"
-                                : isBuilding
-                                ? "bg-amber-400 animate-pulse"
-                                : isFailed
-                                ? "bg-red-400"
-                                : "bg-zinc-600"
-                            }`}
-                          ></span>
-                          <span className="text-[11px] font-mono font-medium text-zinc-300">
-                            {project.status}
-                          </span>
-                        </div>
-                        <Badge variant="outline" className="font-mono text-[10px]">
-                          {project.appType}
-                        </Badge>
-                      </div>
-
-                      <Link href={`/projects/${project.id}`}>
-                        <h3 className="text-sm font-bold text-white group-hover:text-cyan-300 transition-colors">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${isBuilding ? "animate-pulse" : ""}`}
+                          style={{ background: statusColor }}
+                        />
+                        <span className="text-sm font-semibold" style={{ color: "var(--ink-50)", fontFamily: "'Syne', sans-serif" }}>
                           {project.name}
-                        </h3>
-                        <p className="text-xs text-zinc-500 font-mono mt-0.5">{project.slug}</p>
-                      </Link>
-
-                      <div className="mt-3 space-y-1 text-xs text-zinc-400 font-mono">
-                        <div className="truncate text-[11px] text-zinc-500">
-                          {project.repoUrl}
-                        </div>
-                        {project.allocatedPort && (
-                          <div className="text-[11px] text-zinc-400">
-                            Port: <span className="text-zinc-200">{project.allocatedPort}</span>
-                          </div>
-                        )}
+                        </span>
                       </div>
+                      <span
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                        style={{ background: statusColor + "20", color: statusColor, border: `1px solid ${statusColor}40` }}
+                      >
+                        {project.status}
+                      </span>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-zinc-850 flex items-center justify-between">
+                    <div className="text-[11px] font-mono truncate mb-2" style={{ color: "var(--ink-400)" }}>
+                      {project.repoUrl || project.slug}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono">
+                      <span style={{ color: "var(--ink-400)" }}>
+                        {project.appType} · port {project.allocatedPort || "–"}
+                      </span>
                       {project.liveUrl ? (
                         <a
                           href={project.liveUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 font-mono truncate max-w-[200px]"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-1"
+                          style={{ color: "#10b981" }}
                         >
-                          <span>{project.liveUrl}</span>
-                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          Live <ExternalLink className="w-3 h-3" />
                         </a>
                       ) : (
-                        <span className="text-[11px] text-zinc-600 font-mono">Queued</span>
+                        <span style={{ color: "var(--ink-500)" }}>not live</span>
                       )}
-
-                      <Link
-                        href={`/projects/${project.id}`}
-                        className="text-xs text-zinc-400 hover:text-white transition-colors"
-                      >
-                        Details →
-                      </Link>
                     </div>
-                  </Card>
+                  </Link>
                 );
               })}
             </div>
           )}
         </div>
 
-        {/* Right 1 Col: Recent Deployments */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-              Live Deployments
-            </h2>
+        {/* Deployments — 1 col */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className="text-xs font-semibold font-mono uppercase tracking-widest"
+              style={{ color: "var(--ink-200)" }}
+            >
+              Deployments
+            </span>
             <Link
               href="/deployments"
-              className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-mono transition-colors"
+              className="text-xs font-mono flex items-center gap-1"
+              style={{ color: "var(--ink-400)" }}
             >
-              <span>View All</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              All <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
 
-          <Card className="overflow-hidden">
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{ background: "var(--ink-800)", border: "1px solid var(--ink-700)" }}
+          >
             {deployments.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500 text-xs font-mono">
-                No deployment history yet.
+              <div className="p-6 text-center">
+                <Rocket className="w-8 h-8 mx-auto mb-2" style={{ color: "var(--ink-500)" }} />
+                <p className="text-xs font-mono" style={{ color: "var(--ink-400)" }}>
+                  No deployments yet
+                </p>
               </div>
             ) : (
-              <div className="divide-y divide-zinc-900 text-xs">
-                {deployments.slice(0, 6).map((dep) => (
-                  <Link
-                    key={dep.id}
-                    href={`/projects/${dep.projectId}`}
-                    className="p-3.5 flex items-center justify-between hover:bg-zinc-900/40 transition-colors block"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          dep.status === "RUNNING"
-                            ? "bg-emerald-400"
-                            : dep.status === "FAILED"
-                            ? "bg-red-400"
-                            : "bg-amber-400 animate-pulse"
-                        }`}
-                      ></span>
-                      <div>
-                        <div className="font-semibold text-zinc-100 font-mono">
-                          {dep.projectName || "App"}
-                        </div>
-                        <div className="text-[11px] text-zinc-500 font-mono truncate max-w-[160px]">
-                          {dep.commitHash?.substring(0, 7) || "HEAD"} • {dep.branch}
+              <div className="divide-y" style={{ borderColor: "var(--ink-700)" }}>
+                {deployments.slice(0, 7).map((dep) => {
+                  const sc = STATUS_COLOR[dep.status] || "#52525b";
+                  return (
+                    <Link
+                      key={dep.id}
+                      href={`/projects/${dep.projectId}`}
+                      className="flex items-center justify-between px-3 py-2.5 transition-colors"
+                      style={{ borderColor: "var(--ink-700)" }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--ink-750)")}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "")}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Circle
+                          className="w-1.5 h-1.5 shrink-0 fill-current"
+                          style={{ color: sc }}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold truncate" style={{ color: "var(--ink-100)" }}>
+                            {(dep as any).projectName || "app"}
+                          </div>
+                          <div className="text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                            {dep.commitHash?.slice(0, 7) || "HEAD"} · {dep.branch}
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="text-right font-mono text-[11px] text-zinc-500">
-                      <div>{dep.durationMs ? `${(dep.durationMs / 1000).toFixed(1)}s` : "-"}</div>
-                      <span className="text-[10px] text-zinc-400">{dep.status}</span>
-                    </div>
-                  </Link>
-                ))}
+                      <div className="text-right shrink-0 ml-2">
+                        <div className="text-[10px] font-mono" style={{ color: "var(--ink-400)" }}>
+                          {dep.durationMs ? `${(dep.durationMs / 1000).toFixed(0)}s` : "–"}
+                        </div>
+                        <div
+                          className="text-[10px] font-mono"
+                          style={{ color: sc }}
+                        >
+                          {dep.status}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
-          </Card>
+          </div>
         </div>
       </div>
 
-      {/* Overhauled Modals */}
+      {/* ── Service Health Bar ───────────────────────────────────────────── */}
+      {systemStatus && (
+        <div
+          className="mt-4 rounded-lg px-4 py-3 flex items-center gap-4 flex-wrap"
+          style={{ background: "var(--ink-800)", border: "1px solid var(--ink-700)" }}
+        >
+          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--ink-400)" }}>
+            Services
+          </span>
+          {Object.entries(systemStatus.services || {}).map(([key, svc]: [string, any]) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: svc.status === "UP" ? "#10b981" : svc.status === "STANDALONE" ? "#f59e0b" : "#ef4444" }}
+              />
+              <span className="text-[10px] font-mono" style={{ color: "var(--ink-300)" }}>
+                {key.replace(/([A-Z])/g, " $1").trim()}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modals */}
       <NewProjectModal
         isOpen={isNewProjectOpen}
         initialTemplate={preselectedTemplate}
-        onClose={() => {
-          setIsNewProjectOpen(false);
-          setPreselectedTemplate(undefined);
-        }}
-        onCreated={() => {
-          fetchData();
-        }}
+        onClose={() => { setIsNewProjectOpen(false); setPreselectedTemplate(undefined); }}
+        onCreated={() => { fetchData(); }}
       />
-
       <ConnectNodeModal
         isOpen={isConnectNodeOpen}
         onClose={() => setIsConnectNodeOpen(false)}
