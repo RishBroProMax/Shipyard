@@ -137,12 +137,20 @@ export default function LoginPage() {
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
               <div className="flex-1 leading-relaxed">
                 <span>{error}</span>
-                <div className="mt-1 text-[11px] text-red-300/80">
-                  Forgot credentials? Run <code className="bg-black/60 px-1 py-0.5 rounded font-mono text-red-200">shipyard reset-password</code> on your VPS.
+                <div className="mt-2 space-y-1.5 text-[11px] text-red-300/80 border-t border-red-800/40 pt-2">
+                  <p>Check your credentials in the secrets file on the VPS:</p>
+                  <code className="block bg-black/60 px-2 py-1 rounded font-mono text-red-200 text-[10px]">
+                    cat /var/lib/shipyard/data/secrets/shipyard.secret.json
+                  </code>
+                  <p className="mt-1">Or check the auth diagnostics at:</p>
+                  <code className="block bg-black/60 px-2 py-1 rounded font-mono text-red-200 text-[10px]">
+                    {typeof window !== "undefined" ? window.location.origin : ""}/api/auth/debug
+                  </code>
                 </div>
               </div>
             </div>
           )}
+
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email Field */}

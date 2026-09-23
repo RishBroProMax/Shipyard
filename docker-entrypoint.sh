@@ -87,9 +87,19 @@ if [ -n "$DATABASE_URL" ]; then
 fi
 
 # ── Bootstrap Appliance State & Admin Account ─────────────────────────────────
+# CRITICAL: This creates the admin user account. Errors must NOT be silently
+# suppressed — if this fails, the login page will have no users and credentials
+# will never work.
 if [ -f "/app/scripts/init-appliance.js" ]; then
     echo "[Shipyard] Initializing appliance supervisor & admin account..."
-    node /app/scripts/init-appliance.js 2>/dev/null || echo "[Shipyard] ⚠ Appliance bootstrap note: will initialize on first request."
+    if node /app/scripts/init-appliance.js; then
+        echo "[Shipyard] ✓ Appliance initialization complete."
+    else
+        INIT_EXIT=$?
+        echo "[Shipyard] ⚠ WARNING: init-appliance.js exited with code ${INIT_EXIT}."
+        echo "[Shipyard]   Admin account may not have been created. Check logs above."
+        echo "[Shipyard]   The app will still start; initialization retries on first login request."
+    fi
 fi
 
 # Ensure permissions are clean for the application user
