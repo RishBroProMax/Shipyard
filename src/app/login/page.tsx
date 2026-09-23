@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import {
   Anchor,
   ArrowRight,
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,17 +28,17 @@ export default function LoginPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check if already authenticated
+  // Redirect if already authenticated — use hard navigation to respect cookie
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/auth/me", { credentials: "same-origin" })
       .then((res) => {
         if (res.ok) {
-          router.push("/");
+          window.location.href = "/";
         }
       })
       .catch(() => {})
       .finally(() => setIsCheckingAuth(false));
-  }, [router]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +49,8 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // credentials: "same-origin" ensures the Set-Cookie header is applied
+        credentials: "same-origin",
         body: JSON.stringify({ email: email.trim(), password }),
       });
 
@@ -59,11 +59,13 @@ export default function LoginPage() {
         throw new Error(data.error || "Invalid credentials. Please verify your email and password.");
       }
 
-      router.push("/");
-      router.refresh();
+      // Use a hard navigation (not client-side router.push) so the browser
+      // sends the newly-set session cookie on the very next request.
+      // router.push() does a SPA navigation which may fire before the cookie
+      // is committed, causing the middleware to redirect back to /login.
+      window.location.href = "/";
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setIsLoading(false);
     }
   };
